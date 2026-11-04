@@ -1,0 +1,6 @@
+{
+  "name": "FolioDeck — Presentation Template Studio",
+  "description": "Architectural presentation design system and interactive template studio for customizing executive pitch decks, financial briefings, and brand systems.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
