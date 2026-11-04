@@ -607,8 +607,15 @@ export const SAMPLE_MEDIA_ASSETS: SampleMediaAsset[] = [
     id: 'sample-video-aurora',
     title: 'Cinema Prism Light Wave (Video)',
     type: 'video',
-    caption: 'procedural://cinema-prism',
+    caption: 'Cinema Prism Light Wave · 4K Motion Loop',
     url: 'procedural://cinema-prism',
+  },
+  {
+    id: 'sample-video-funny',
+    title: 'Playful 3D Bouncing Arcade & Confetti (Funny Video)',
+    type: 'video',
+    caption: 'Visitor Showcase · Playful 3D Arcade & Confetti Clip',
+    url: 'procedural://funny-arcade-reel',
   },
 ];
 
@@ -631,6 +638,60 @@ export function buildMediaTransformCss(
   const py = Number(Math.max(-50, Math.min(50, media.panY ?? 0)).toFixed(1));
   return `scale(${z}) translate(${px}%, ${py}%)`;
 }
+
+export function isAdminModeFromSearch(search: string): boolean {
+  if (!search) return false;
+  const normalized = search.startsWith('?') ? search.slice(1) : search;
+  const params = new URLSearchParams(normalized);
+  const mode = params.get('mode');
+  return Boolean(mode && mode.trim().toLowerCase() === 'admin');
+}
+
+export interface VisitorUploadedAsset {
+  id: string;
+  name: string;
+  type: 'photo' | 'video';
+  url: string;
+}
+
+export function injectVisitorMediaIntoSlides(
+  slides: SlideData[],
+  assets: VisitorUploadedAsset[]
+): SlideData[] {
+  if (!assets || assets.length === 0) return slides;
+
+  return slides.map((slide, index) => {
+    const asset = assets[index % assets.length];
+    const supportsMediaPlaceholder =
+      slide.layout === 'cover-editorial' ||
+      slide.layout === 'split-narrative' ||
+      slide.layout === 'media-showcase';
+
+    return {
+      ...slide,
+      layout: supportsMediaPlaceholder ? slide.layout : 'media-showcase',
+      customMedia: {
+        ...DEFAULT_SLIDE_MEDIA_CONFIG,
+        ...(slide.customMedia || {}),
+        mode: asset.type,
+        url: asset.url,
+        caption: `${asset.name} · Injected Visitor ${
+          asset.type === 'video' ? 'Video' : 'Photo'
+        }`,
+        brightness: 104,
+        contrast: 108,
+        saturation: 112,
+        zoom: 1.08,
+        borderRadiusPx: 6,
+        videoAutoplay: true,
+        videoLoop: true,
+        videoMuted: true,
+        videoPlaybackRate: 1,
+      },
+    };
+  });
+}
+
 
 
 

@@ -7,7 +7,7 @@ import {
   validateCustomBrandKit,
 } from '../utils/deckEngine';
 import { AnimatedHeadline } from './AnimatedHeadline';
-import { Check, Plus } from 'lucide-react';
+import { Check, Plus, Lock } from 'lucide-react';
 
 interface BrandSystemBuilderProps {
   themes: ThemePalette[];
@@ -16,6 +16,7 @@ interface BrandSystemBuilderProps {
   activeTypography: TypographyPair;
   headlineAnimation?: HeadlineAnimationStyle;
   enable3DDesignMotion?: boolean;
+  isAdminMode?: boolean;
   onSelectTheme: (theme: ThemePalette) => void;
   onSelectTypography: (typo: TypographyPair) => void;
   onCreateCustomTheme: (newTheme: ThemePalette) => void;
@@ -28,6 +29,7 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
   activeTypography,
   headlineAnimation = 'kinetic-3d-wave',
   enable3DDesignMotion = true,
+  isAdminMode = false,
   onSelectTheme,
   onSelectTypography,
   onCreateCustomTheme,
@@ -181,9 +183,17 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
 
             {/* Typography Pairings */}
             <div className="space-y-3 pt-4 border-t border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-900">
-                Editorial Typography Pairings (2+1 Font Rule)
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Editorial Typography Pairings (2+1 Font Rule)
+                </h3>
+                {!isAdminMode && (
+                  <span className="text-[11px] font-mono text-slate-500 inline-flex items-center gap-1">
+                    <Lock className="w-3 h-3" aria-hidden="true" />
+                    Base Typography Locked
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {typographies.map((typo) => {
                   const isSelected = typo.id === activeTypography.id;
@@ -191,12 +201,13 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
                     <button
                       key={typo.id}
                       type="button"
-                      onClick={() => onSelectTypography(typo)}
+                      disabled={!isAdminMode}
+                      onClick={() => isAdminMode && onSelectTypography(typo)}
                       className={`p-4 text-left border transition-colors space-y-1.5 ${
                         isSelected
                           ? 'border-blue-700 bg-blue-50/30'
                           : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
+                      } ${!isAdminMode ? 'opacity-85 cursor-default' : ''}`}
                     >
                       <div className="flex items-center justify-between">
                         <span
@@ -224,14 +235,52 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
 
           {/* Right 5 Columns: Custom Brand Token Validator Form */}
           <div className="lg:col-span-5 bg-slate-50 border border-slate-200 p-6 space-y-5">
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-900 font-display">
-                Create & Audit Custom Brand Kit
-              </h3>
-              <p className="text-xs text-slate-600">
-                Define your organization’s hex tokens below. Palettes failing WCAG AA (4.5:1) legibility are automatically flagged before deck application.
-              </p>
-            </div>
+            {!isAdminMode ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-slate-900">
+                  <Lock className="w-4 h-4 text-blue-700" aria-hidden="true" />
+                  <h3 className="text-base font-bold font-display">
+                    Typography & Brand Token Forms Locked
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  You are viewing FolioDeck in <strong>Visitor Showcase Mode</strong>. Base typography pairings, deck configuration panels, and custom hex token forms are secured so visitors can freely upload photos and funny videos into the 3D templates without altering the underlying repository design.
+                </p>
+                <div
+                  className="p-4 border flex items-center justify-between"
+                  style={{
+                    backgroundColor: activeTheme.backgroundHex,
+                    borderColor: activeTheme.surfaceHex,
+                    color: activeTheme.textPrimaryHex,
+                  }}
+                >
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold">{activeTheme.name}</div>
+                    <div className="text-[11px]" style={{ color: activeTheme.accentHex }}>
+                      Secured Base Palette · 60-30-10 Allocation
+                    </div>
+                  </div>
+                  <div className="text-right font-mono tabular-nums">
+                    <div className="text-sm font-bold">
+                      {calculateContrastRatio(activeTheme.textPrimaryHex, activeTheme.backgroundHex)}:1
+                    </div>
+                    <div className="text-[11px]">WCAG AAA</div>
+                  </div>
+                </div>
+                <p className="text-[11px] font-mono text-slate-500">
+                  Admin Studio Access: append <code>?mode=admin</code> to the URL to unlock all editing tools, typography forms, and deck configuration panels.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-slate-900 font-display">
+                    Create & Audit Custom Brand Kit
+                  </h3>
+                  <p className="text-xs text-slate-600">
+                    Define your organization’s hex tokens below. Palettes failing WCAG AA (4.5:1) legibility are automatically flagged before deck application.
+                  </p>
+                </div>
 
             <form onSubmit={handleCreateBrandKit} className="space-y-4" noValidate>
               <div>
@@ -389,14 +438,16 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
                 </p>
               )}
 
-              <button
-                type="submit"
-                className="w-full px-4 py-2.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                Validate & Apply Brand Kit to Deck
-              </button>
-            </form>
+                  <button
+                    type="submit"
+                    className="w-full px-4 py-2.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                    Validate & Apply Brand Kit to Deck
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       </div>

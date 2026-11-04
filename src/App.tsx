@@ -26,10 +26,14 @@ import {
   getWcagComplianceLevel,
   HEADLINE_ANIMATION_PRESETS,
   HeadlineAnimationStyle,
+  injectVisitorMediaIntoSlides,
+  isAdminModeFromSearch,
   MEDIA_FILTER_PRESETS,
   reorderSlideInDeck,
   SAMPLE_MEDIA_ASSETS,
+  VisitorUploadedAsset,
 } from './utils/deckEngine';
+import { downloadActiveSlideToGallery } from './utils/slideGalleryExport';
 import { SlideCanvas } from './components/SlideCanvas';
 import { ThreeStageShowcase } from './components/ThreeStageShowcase';
 import { TemplateGallery } from './components/TemplateGallery';
@@ -53,6 +57,9 @@ import {
   Box,
   Film,
   Upload,
+  Lock,
+  Sparkles,
+  Camera,
 } from 'lucide-react';
 
 const LAYOUT_OPTIONS: { value: SlideLayoutType; label: string }[] = [
@@ -100,7 +107,24 @@ const SEED_SAVED_DECKS: SavedCustomDeck[] = [
 ];
 
 export default function App() {
+  const visitorMediaInputRef = useRef<HTMLInputElement | null>(null);
   const studioMediaInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Admin mode is strictly controlled by the URL parameter (?mode=admin); defaults to false (Visitor Showcase Mode)
+  const [isAdminMode, setIsAdminMode] = useState<boolean>(() =>
+    typeof window !== 'undefined'
+      ? isAdminModeFromSearch(window.location.search)
+      : false
+  );
+
+  useEffect(() => {
+    const syncModeFromUrl = () => {
+      setIsAdminMode(isAdminModeFromSearch(window.location.search));
+    };
+    window.addEventListener('popstate', syncModeFromUrl);
+    return () => window.removeEventListener('popstate', syncModeFromUrl);
+  }, []);
+
   const [themes, setThemes] = useState<ThemePalette[]>(THEME_PALETTES);
   const [activeAtmosphere, setActiveAtmosphere] = useState<AtmospherePreset>(
     ATMOSPHERE_PRESETS[0]
@@ -110,6 +134,7 @@ export default function App() {
   const [headlineAnimation, setHeadlineAnimation] =
     useState<HeadlineAnimationStyle>('kinetic-3d-wave');
 
+  // Default to a media-rich 3D template with designated media placeholders ready for visitor uploads
   const [activeTemplateId, setActiveTemplateId] = useState<string>(
     INITIAL_TEMPLATES[0].id
   );
@@ -119,9 +144,21 @@ export default function App() {
   const [aspectRatio, setAspectRatio] = useState<AspectRatioFormat>(
     INITIAL_TEMPLATES[0].aspectRatio
   );
-  const [slides, setSlides] = useState<SlideData[]>(
-    INITIAL_TEMPLATES[0].slides
-  );
+  const [slides, setSlides] = useState<SlideData[]>(() => {
+    const initial = JSON.parse(
+      JSON.stringify(INITIAL_TEMPLATES[0].slides)
+    ) as SlideData[];
+    if (initial.length > 0 && (!initial[0].customMedia || initial[0].customMedia.mode === 'artwork')) {
+      initial[0].customMedia = {
+        ...DEFAULT_SLIDE_MEDIA_CONFIG,
+        mode: 'video',
+        url: 'procedural://cinema-prism',
+        caption: 'Designated 3D Media Placeholder · Upload Your Photo or Funny Video',
+        zoom: 1.06,
+      };
+    }
+    return initial;
+  });
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
   const [activeTheme, setActiveTheme] = useState<ThemePalette>(
     THEME_PALETTES[1]
@@ -138,6 +175,9 @@ export default function App() {
   const [studioBannerNotice, setStudioBannerNotice] = useState<string | null>(
     null
   );
+  const [visitorUploadedAssets, setVisitorUploadedAssets] = useState<
+    VisitorUploadedAsset[]
+  >([]);
 
   const [savedDecks, setSavedDecks] = useState<SavedCustomDeck[]>(() => {
     try {
@@ -174,14 +214,90 @@ export default function App() {
     setStudioBannerNotice(msg);
     setTimeout(() => {
       setStudioBannerNotice((prev) => (prev === msg ? null : prev));
-    }, 3800);
+    }, 4500);
+  };
+
+  // Interactive Visitor Media Upload: reads local files in browser memory & injects into 3D template placeholders
+  const handleVisitorMediaFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const newAssets: VisitorUploadedAsset[] = Array.from(fileList).map(
+      (file, idx) => {
+        const isVideo = file.type.startsWith('video/');
+        const objectUrl = URL.createObjectURL(file);
+        return {
+          id: `visitor-media-${Date.now()}-${idx}`,
+          name: file.name,
+          type: isVideo ? 'video' : 'photo',
+          url: objectUrl,
+        };
+      }
+    );
+
+    setVisitorUploadedAssets((prev) => [...newAssets, ...prev]);
+    setSlides((prevSlides) => injectVisitorMediaIntoSlides(prevSlides, newAssets));
+    setActiveSlideIndex(0);
+    triggerNotice(
+      `Injected ${newAssets.length} uploaded ${
+        newAssets.length === 1 ? 'media file' : 'media files'
+      } (${newAssets.map((a) => a.name).join(', ')}) into the 3D template slide placeholders in local browser memory.`
+    );
+  };
+
+  // Instant 1-Click Visitor Sample Funny Video Injection
+  const handleInjectSampleFunnyVideo = () => {
+    const sampleAsset: VisitorUploadedAsset = {
+      id: `visitor-funny-${Date.now()}`,
+      name: 'Playful 3D Bouncing Arcade Reel',
+      type: 'video',
+      url: 'procedural://funny-arcade-reel',
+    };
+    setVisitorUploadedAssets((prev) => [sampleAsset, ...prev]);
+    setSlides((prevSlides) =>
+      injectVisitorMediaIntoSlides(prevSlides, [sampleAsset])
+    );
+    setActiveSlideIndex(0);
+    triggerNotice(
+      'Injected "Playful 3D Bouncing Arcade Reel" into all 3D template slide placeholders with dynamic zoom & spatial depth tilt.'
+    );
+  };
+
+  // High-Resolution Canvas Capture & Automatic Download to Gallery
+  const handleDownloadSlideToGallery = () => {
+    const result = downloadActiveSlideToGallery({
+      slide: currentSlide,
+      slideIndex: activeSlideIndex,
+      totalSlides: slides.length,
+      deckTitle,
+      theme: activeTheme,
+    });
+    triggerNotice(
+      `Downloaded "${result.fileName}" (${result.width}×${result.height} Full HD PNG) to your device gallery.`
+    );
   };
 
   const handleLoadTemplateIntoStudio = (tpl: TemplateDeck) => {
     setActiveTemplateId(tpl.id);
     setDeckTitle(tpl.title);
     setAspectRatio(tpl.aspectRatio);
-    setSlides(JSON.parse(JSON.stringify(tpl.slides)));
+    let nextSlides: SlideData[] = JSON.parse(JSON.stringify(tpl.slides));
+    // If visitor already uploaded media in memory, automatically inject into the newly selected template's placeholders
+    if (visitorUploadedAssets.length > 0) {
+      nextSlides = injectVisitorMediaIntoSlides(nextSlides, visitorUploadedAssets);
+    } else if (
+      nextSlides.length > 0 &&
+      (!nextSlides[0].customMedia || nextSlides[0].customMedia.mode === 'artwork')
+    ) {
+      nextSlides[0].customMedia = {
+        ...DEFAULT_SLIDE_MEDIA_CONFIG,
+        mode: 'video',
+        url: 'procedural://cinema-prism',
+        caption: `${tpl.title} · 3D Media Placeholder`,
+        zoom: 1.06,
+      };
+    }
+    setSlides(nextSlides);
     setActiveSlideIndex(0);
     const matchedTheme =
       themes.find((t) => t.id === tpl.defaultThemeId) || themes[0];
@@ -191,7 +307,9 @@ export default function App() {
     setActiveTheme(matchedTheme);
     setActiveTypography(matchedTypo);
     triggerNotice(
-      `Loaded "${tpl.title}" (${tpl.slides.length} slides) into Studio.`
+      `Loaded "${tpl.title}" (${tpl.slides.length} slides) into ${
+        isAdminMode ? 'Admin Studio' : 'Visitor 3D Showcase'
+      }.`
     );
     const studioEl = document.getElementById('studio-workspace');
     if (studioEl) {
@@ -203,16 +321,21 @@ export default function App() {
     setActiveTemplateId(tpl.id);
     setDeckTitle(tpl.title);
     setAspectRatio(tpl.aspectRatio);
-    const clonedSlides: SlideData[] = JSON.parse(JSON.stringify(tpl.slides));
-    // Ensure first slide has photo/video media enabled so the user can immediately edit photo/video
-    if (clonedSlides.length > 0) {
+    let clonedSlides: SlideData[] = JSON.parse(JSON.stringify(tpl.slides));
+    if (visitorUploadedAssets.length > 0) {
+      clonedSlides = injectVisitorMediaIntoSlides(
+        clonedSlides,
+        visitorUploadedAssets
+      );
+    } else if (clonedSlides.length > 0) {
       const first = clonedSlides[0];
       if (!first.customMedia || first.customMedia.mode === 'artwork') {
         first.customMedia = {
           ...DEFAULT_SLIDE_MEDIA_CONFIG,
           mode: 'video',
-          url: 'procedural://cinema-prism',
-          caption: `${tpl.title} · Custom Studio Video & Photo Layer`,
+          url: 'procedural://funny-arcade-reel',
+          caption: `${tpl.title} · Visitor Media Placeholder`,
+          zoom: 1.08,
         };
       }
       if (
@@ -232,9 +355,11 @@ export default function App() {
       TYPOGRAPHY_PAIRS[0];
     setActiveTheme(matchedTheme);
     setActiveTypography(matchedTypo);
-    setInspectorTab('media');
+    if (isAdminMode) {
+      setInspectorTab('media');
+    }
     triggerNotice(
-      `Opened "${tpl.title}" in Photo & Video Editor — upload or customize your video & photo on the right panel.`
+      `Loaded "${tpl.title}" — click "Upload Your Media" to inject your own photos or funny videos into the 3D slides.`
     );
     const studioEl = document.getElementById('studio-workspace');
     if (studioEl) {
@@ -251,6 +376,7 @@ export default function App() {
     field: K,
     value: SlideData[K]
   ) => {
+    if (!isAdminMode) return;
     setSlides((prev) =>
       prev.map((s, idx) =>
         idx === activeSlideIndex ? { ...s, [field]: value } : s
@@ -264,7 +390,6 @@ export default function App() {
         if (idx !== activeSlideIndex) return s;
         const base = s.customMedia || { ...DEFAULT_SLIDE_MEDIA_CONFIG };
         const updatedMedia: SlideMediaConfig = { ...base, ...patch };
-        // Ensure the layout shows the media frame if user enables photo or video on a chart-only layout
         const nextLayout =
           updatedMedia.mode !== 'artwork' &&
           s.layout !== 'cover-editorial' &&
@@ -291,7 +416,9 @@ export default function App() {
       url: objectUrl,
       caption: `${file.name} · Custom ${isVideo ? 'Video' : 'Photo'}`,
     });
-    setInspectorTab('media');
+    if (isAdminMode) {
+      setInspectorTab('media');
+    }
     triggerNotice(
       `Uploaded ${isVideo ? 'video' : 'photo'} "${file.name}" onto Slide ${
         activeSlideIndex + 1
@@ -301,7 +428,9 @@ export default function App() {
 
   const handleApplyLabMediaToActiveSlide = (mediaConfig: SlideMediaConfig) => {
     handleUpdateSlideMedia(mediaConfig);
-    setInspectorTab('media');
+    if (isAdminMode) {
+      setInspectorTab('media');
+    }
     triggerNotice(
       `Applied graded ${mediaConfig.mode} "${mediaConfig.caption}" to Slide ${
         activeSlideIndex + 1
@@ -310,6 +439,7 @@ export default function App() {
   };
 
   const handleAddBlankSlide = () => {
+    if (!isAdminMode) return;
     const newSlideNumber = slides.length + 1;
     const newSlide: SlideData = {
       id: `slide-custom-${Date.now()}`,
@@ -354,12 +484,14 @@ export default function App() {
   };
 
   const handleDuplicateSlide = (slideId: string) => {
+    if (!isAdminMode) return;
     const next = duplicateSlideInDeck(slides, slideId);
     setSlides(next);
     setActiveSlideIndex((prev) => Math.min(prev + 1, next.length - 1));
   };
 
   const handleMoveSlide = (slideId: string, direction: 'up' | 'down') => {
+    if (!isAdminMode) return;
     const idx = slides.findIndex((s) => s.id === slideId);
     if (idx === -1) return;
     const next = reorderSlideInDeck(slides, slideId, direction);
@@ -372,6 +504,7 @@ export default function App() {
   };
 
   const handleDeleteSlide = (slideId: string) => {
+    if (!isAdminMode) return;
     if (slides.length <= 1) {
       triggerNotice('A presentation deck must retain at least 1 slide.');
       return;
@@ -382,6 +515,7 @@ export default function App() {
   };
 
   const handleCreateCustomTheme = (newTheme: ThemePalette) => {
+    if (!isAdminMode) return;
     setThemes((prev) => [newTheme, ...prev]);
     setActiveTheme(newTheme);
   };
@@ -412,7 +546,7 @@ export default function App() {
     setActiveTypography(matchedTypo);
     setSlides(JSON.parse(JSON.stringify(saved.slides)));
     setActiveSlideIndex(0);
-    triggerNotice(`Restored saved deck "${saved.name}" into Studio.`);
+    triggerNotice(`Restored saved deck "${saved.name}" into Showcase.`);
     const studioEl = document.getElementById('studio-workspace');
     if (studioEl) {
       studioEl.scrollIntoView({ behavior: 'smooth' });
@@ -420,14 +554,34 @@ export default function App() {
   };
 
   const handleDeleteSavedDeck = (id: string) => {
+    if (!isAdminMode) return;
     setSavedDecks((prev) => prev.filter((d) => d.id !== id));
   };
 
   return (
     <div
+      data-mode={isAdminMode ? 'admin' : 'visitor-showcase'}
       className="min-h-screen flex flex-col text-slate-900 transition-colors duration-200"
       style={{ backgroundImage: activeAtmosphere.pageBgCss }}
     >
+      {/* Hidden Visitor Media File Input (Multiple Photos & Funny Videos, Local Browser Memory Only) */}
+      <input
+        ref={visitorMediaInputRef}
+        type="file"
+        accept="image/*,video/*"
+        multiple
+        aria-label="Upload Your Media files"
+        onChange={handleVisitorMediaFiles}
+        className="hidden"
+      />
+      <input
+        ref={studioMediaInputRef}
+        type="file"
+        accept="image/*,video/*"
+        onChange={handleStudioFileUpload}
+        className="hidden"
+      />
+
       {/* Strict 3-Zone Top Bar Contract */}
       <header className="sticky top-0 z-30 bg-white/90 border-b border-slate-200/90 px-6 py-3.5 flex items-center justify-between gap-8">
         {/* Zone 1: Single text element wordmark */}
@@ -447,7 +601,7 @@ export default function App() {
             href="#studio-workspace"
             className="hover:text-slate-900 hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
           >
-            Studio Workspace
+            {isAdminMode ? 'Admin Studio' : '3D Showcase'}
           </a>
           <a
             href="#template-gallery"
@@ -479,29 +633,34 @@ export default function App() {
         <div className="flex items-center shrink-0">
           <button
             type="button"
-            onClick={() => setIsExportOpen(true)}
+            onClick={handleDownloadSlideToGallery}
             className="px-4 py-2 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <Download className="w-3.5 h-3.5" aria-hidden="true" />
-            Export Deck
+            Download to Gallery
           </button>
         </div>
       </header>
 
       <main className="flex-1">
-        {/* Section 01: Editorial Hero, Interactive 3D Animation Showcase & Live Studio */}
+        {/* Section 01: Visitor Showcase Mode (Default) & Admin Studio (?mode=admin) */}
         <section id="studio-workspace" className="scroll-mt-16 pt-8 pb-12 px-6">
           <div className="max-w-[1360px] mx-auto space-y-6">
-            {/* Hero Proposition Card with Luminous Atmosphere Mesh */}
+            {/* Hero Proposition Card with Ambient Aurora Mesh Gradient */}
             <div
-              className="p-6 sm:p-8 border border-slate-200/90 bg-white/80 space-y-6"
+              className="p-6 sm:p-8 border border-slate-200/90 bg-white/85 space-y-6 shadow-xs"
               style={{ backgroundImage: activeAtmosphere.heroMeshCss }}
             >
               <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                 <div className="space-y-2.5 max-w-3xl">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                    <span className="font-semibold text-blue-700">
-                      01. Interactive 3D Presentation & Media Studio
+                    <span className="font-semibold text-blue-700 inline-flex items-center gap-1">
+                      {!isAdminMode && (
+                        <Lock className="w-3 h-3 text-blue-700" aria-hidden="true" />
+                      )}
+                      {isAdminMode
+                        ? '01. Admin Studio Mode (?mode=admin Unlocked)'
+                        : '01. Visitor Showcase Mode · Base Design Secured'}
                     </span>
                     <span aria-hidden="true">·</span>
                     <span>{activeAtmosphere.accentBadgeText}</span>
@@ -512,75 +671,69 @@ export default function App() {
                   </div>
                   <AnimatedHeadline
                     as="h1"
-                    text="Design and Customize Institutional Presentation Systems with 3D Spatial Depth"
+                    text="Interactive 3D Presentation Showcase with Instant Visitor Media Injection"
                     animationStyle={headlineAnimation}
                     primaryColorHex="#0F172A"
                     accentColorHex={activeAtmosphere.threeKeyLightHex}
                     className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 font-display leading-tight"
                   />
+                  <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
+                    {isAdminMode
+                      ? 'Admin View active: all deck configuration panels, inline slide copy editors, and typography forms are unlocked.'
+                      : 'Upload your own photos or funny videos from your device to automatically inject them into our 3D template slides in local browser memory, then capture and download high-resolution slides to your gallery.'}
+                  </p>
                 </div>
 
-                {/* Primary Studio & 3D Animation Action Bar */}
+                {/* Primary Visitor Workflow & 3D Showcase Action Bar */}
                 <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                  <input
-                    ref={studioMediaInputRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    onChange={handleStudioFileUpload}
-                    className="hidden"
-                  />
                   <button
                     type="button"
-                    onClick={() => studioMediaInputRef.current?.click()}
-                    className="px-3.5 py-2 text-xs font-medium bg-white border border-blue-300 text-blue-800 hover:bg-blue-50 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                    onClick={() => visitorMediaInputRef.current?.click()}
+                    className="px-4 py-2.5 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-md transition-colors inline-flex items-center gap-2 whitespace-nowrap shrink-0 shadow-xs"
                   >
                     <Upload className="w-3.5 h-3.5" aria-hidden="true" />
-                    Upload Photo / Video
+                    Upload Your Media
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleInjectSampleFunnyVideo}
+                    className="px-3.5 py-2.5 text-xs font-medium bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-blue-700" aria-hidden="true" />
+                    Try Sample Funny Video
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadSlideToGallery}
+                    className="px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                  >
+                    <Camera className="w-3.5 h-3.5" aria-hidden="true" />
+                    Download to Gallery
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setShow3DAnimation((prev) => !prev)}
                     aria-pressed={show3DAnimation}
-                    className={`px-3.5 py-2 text-xs font-medium border rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                    className={`px-3 py-2.5 text-xs font-medium border rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                       show3DAnimation
                         ? 'bg-indigo-950 border-indigo-800 text-white'
                         : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-50'
                     }`}
                   >
                     <Box className="w-3.5 h-3.5" aria-hidden="true" />
-                    {show3DAnimation ? 'Hide 3D Animation' : 'Show 3D Animation'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowGridGuides((prev) => !prev)}
-                    aria-pressed={showGridGuides}
-                    className={`px-3.5 py-2 text-xs font-medium border rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                      showGridGuides
-                        ? 'bg-rose-50 border-rose-300 text-rose-900'
-                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Grid className="w-3.5 h-3.5" aria-hidden="true" />
-                    {showGridGuides ? 'Hide 12-Col Grid' : 'Show 12-Col Grid'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSaveCustomDeck(`${deckTitle}`)}
-                    className="px-3.5 py-2 text-xs font-medium bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 rounded-md transition-colors whitespace-nowrap shrink-0"
-                  >
-                    Save Snapshot
+                    {show3DAnimation ? 'Hide 3D Stage' : 'Show 3D Stage'}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setIsPresenting(true)}
-                    className="px-4 py-2 text-xs font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                    className="px-3.5 py-2.5 text-xs font-medium bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
                   >
                     <Play className="w-3.5 h-3.5" aria-hidden="true" />
-                    Present Deck
+                    Present Fullscreen
                   </button>
                 </div>
               </div>
@@ -590,7 +743,7 @@ export default function App() {
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-semibold text-slate-700 mr-1">
-                      Canvas Atmosphere:
+                      Ambient Aurora Glow:
                     </span>
                     {ATMOSPHERE_PRESETS.map((atmo) => {
                       const isSelected = atmo.id === activeAtmosphere.id;
@@ -620,6 +773,8 @@ export default function App() {
                   <div className="text-xs font-mono text-slate-600 tabular-nums">
                     Active Slide: {String(activeSlideIndex + 1).padStart(2, '0')} /{' '}
                     {String(slides.length).padStart(2, '0')}
+                    {visitorUploadedAssets.length > 0 &&
+                      ` · ${visitorUploadedAssets.length} Visitor Media Injected`}
                   </div>
                 </div>
 
@@ -659,7 +814,9 @@ export default function App() {
                         : 'bg-white/90 text-slate-700 border-slate-300 hover:bg-white'
                     }`}
                   >
-                    {enable3DCardTilt ? '3D Design Motion: Active' : 'Enable 3D Design Motion'}
+                    {enable3DCardTilt
+                      ? '3D Spatial Depth Tilt: Active'
+                      : 'Enable 3D Spatial Depth Tilt'}
                   </button>
                 </div>
               </div>
@@ -693,250 +850,77 @@ export default function App() {
               </div>
             )}
 
-            {/* 3-Pane Studio Workspace Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* LEFT RAIL (3 Cols): Deck Metadata & Slide Filmstrip */}
-              <aside
-                aria-label="Slide filmstrip and deck structure"
-                className="lg:col-span-3 bg-white/95 border border-slate-200 p-4 space-y-4"
+            {/* CONDITIONAL WORKSPACE: Visitor Showcase Stage (Locked Base Design) vs. Admin 3-Pane Studio (?mode=admin) */}
+            {!isAdminMode ? (
+              <div
+                data-testid="visitor-showcase-stage"
+                className="aurora-ambient-stage border border-slate-800 p-6 sm:p-8 space-y-6 text-white"
               >
-                <div className="space-y-3 pb-3 border-b border-slate-200">
-                  <div>
-                    <label
-                      htmlFor="studio-deck-title-input"
-                      className="block text-[11px] font-medium text-slate-500 mb-1"
+                {/* Visitor Showcase Top Control Strip */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-white/15">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-sky-300">
+                      <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span className="font-semibold">
+                        Visitor 3D Media Showcase · Editing & Deck Config Locked
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span className="font-mono text-slate-300">
+                        Active Deck: {deckTitle}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300">
+                      Select any slide below, upload your photos or funny videos into the 3D placeholders, and click "Download to Gallery" to save a 1920×1080 Full HD slide image.
+                    </p>
+                  </div>
+
+                  {/* Interactive Slide Switcher & Visitor Actions */}
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <div
+                      role="tablist"
+                      aria-label="Showcase slide selector"
+                      className="flex items-center gap-1 bg-slate-950/80 p-1 rounded border border-white/15"
                     >
-                      Active Presentation Title
-                    </label>
-                    <input
-                      id="studio-deck-title-input"
-                      type="text"
-                      value={deckTitle}
-                      onChange={(e) => setDeckTitle(e.target.value)}
-                      className="w-full px-2.5 py-1.5 text-xs font-semibold bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label
-                        htmlFor="studio-template-preset"
-                        className="block text-[11px] font-medium text-slate-500 mb-1"
-                      >
-                        Template Base ({INITIAL_TEMPLATES.length})
-                      </label>
-                      <select
-                        id="studio-template-preset"
-                        value={activeTemplateId}
-                        onChange={(e) => {
-                          const found = INITIAL_TEMPLATES.find(
-                            (t) => t.id === e.target.value
-                          );
-                          if (found) handleLoadTemplateIntoStudio(found);
-                        }}
-                        className="w-full px-2 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-800"
-                      >
-                        {INITIAL_TEMPLATES.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="studio-aspect-select"
-                        className="block text-[11px] font-medium text-slate-500 mb-1"
-                      >
-                        Frame Ratio
-                      </label>
-                      <select
-                        id="studio-aspect-select"
-                        value={aspectRatio}
-                        onChange={(e) =>
-                          setAspectRatio(e.target.value as AspectRatioFormat)
-                        }
-                        className="w-full px-2 py-1.5 text-xs font-mono bg-slate-50 border border-slate-300 rounded text-slate-800"
-                      >
-                        <option value="16:9">16:9 Wide</option>
-                        <option value="4:3">4:3 Classic</option>
-                        <option value="A4">A4 Print</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Slide Filmstrip Header */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-800 font-mono tabular-nums">
-                    Slides ({slides.length})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleAddBlankSlide}
-                    className="px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 rounded transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                    Add Slide
-                  </button>
-                </div>
-
-                {/* Slide Filmstrip List */}
-                <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
-                  {slides.map((s, idx) => {
-                    const isCurrent = idx === activeSlideIndex;
-                    return (
-                      <div
-                        key={s.id}
-                        className={`p-2.5 border transition-colors ${
-                          isCurrent
-                            ? 'border-blue-700 bg-blue-50/40'
-                            : 'border-slate-200 bg-slate-50/60 hover:border-slate-300'
-                        }`}
-                      >
+                      {slides.map((s, idx) => (
                         <button
+                          key={s.id}
                           type="button"
+                          role="tab"
+                          aria-selected={idx === activeSlideIndex}
                           onClick={() => setActiveSlideIndex(idx)}
-                          className="w-full text-left space-y-1"
+                          className={`px-2.5 py-1 text-xs font-mono tabular-nums rounded transition-colors whitespace-nowrap shrink-0 ${
+                            idx === activeSlideIndex
+                              ? 'bg-blue-600 text-white font-semibold'
+                              : 'text-slate-300 hover:text-white hover:bg-white/10'
+                          }`}
                         >
-                          <div className="flex items-center justify-between text-[11px] font-mono tabular-nums text-slate-500">
-                            <span className="font-semibold text-slate-800">
-                              Slide {String(idx + 1).padStart(2, '0')}
-                            </span>
-                            <span>{s.layout}</span>
-                          </div>
-                          <div className="text-xs font-semibold text-slate-900 truncate">
-                            {s.headline}
-                          </div>
+                          Slide {String(idx + 1).padStart(2, '0')}
                         </button>
-
-                        {/* Per-Slide Reorder / Duplicate / Delete Actions */}
-                        <div className="flex items-center justify-end gap-1 pt-2 mt-2 border-t border-slate-200/80">
-                          <button
-                            type="button"
-                            aria-label={`Move slide ${idx + 1} up`}
-                            disabled={idx === 0}
-                            onClick={() => handleMoveSlide(s.id, 'up')}
-                            className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
-                          >
-                            <ArrowUp className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Move slide ${idx + 1} down`}
-                            disabled={idx === slides.length - 1}
-                            onClick={() => handleMoveSlide(s.id, 'down')}
-                            className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
-                          >
-                            <ArrowDown className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Duplicate slide ${idx + 1}`}
-                            onClick={() => handleDuplicateSlide(s.id)}
-                            className="p-1 text-slate-500 hover:text-slate-900"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Delete slide ${idx + 1}`}
-                            disabled={slides.length <= 1}
-                            onClick={() => handleDeleteSlide(s.id)}
-                            className="p-1 text-slate-500 hover:text-red-600 disabled:opacity-30"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </aside>
-
-              {/* CENTER STAGE (6 Cols): Live Slide Canvas & Layout Switcher */}
-              <div className="lg:col-span-6 space-y-4">
-                {/* Canvas Toolbar */}
-                <div className="bg-white/95 border border-slate-200 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <label
-                      htmlFor="slide-layout-select"
-                      className="text-xs font-medium text-slate-600 whitespace-nowrap"
-                    >
-                      Layout:
-                    </label>
-                    <select
-                      id="slide-layout-select"
-                      aria-label="Slide master layout"
-                      value={currentSlide.layout}
-                      onChange={(e) =>
-                        handleUpdateSlideField(
-                          'layout',
-                          e.target.value as SlideLayoutType
-                        )
-                      }
-                      className="px-2 py-1.5 text-xs font-medium bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
-                    >
-                      {LAYOUT_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
                       ))}
-                    </select>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <label
-                      htmlFor="slide-artwork-select"
-                      className="text-xs font-medium text-slate-600 whitespace-nowrap"
-                    >
-                      Figure:
-                    </label>
-                    <select
-                      id="slide-artwork-select"
-                      aria-label="Slide technical figure"
-                      value={currentSlide.artworkId}
-                      onChange={(e) =>
-                        handleUpdateSlideField(
-                          'artworkId',
-                          e.target.value as VisualArtworkId
-                        )
-                      }
-                      className="px-2 py-1.5 text-xs font-medium bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
-                    >
-                      {ARTWORK_OPTIONS.map((art) => (
-                        <option key={art.value} value={art.value}>
-                          {art.label}
-                        </option>
-                      ))}
-                    </select>
+                    </div>
 
                     <button
                       type="button"
-                      onClick={() => {
-                        setInspectorTab('media');
-                        if (currentMedia.mode === 'artwork') {
-                          handleUpdateSlideMedia({
-                            mode: 'video',
-                            url: 'procedural://cinema-prism',
-                          });
-                        }
-                      }}
-                      className={`px-2.5 py-1.5 text-xs font-medium border rounded transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0 ${
-                        inspectorTab === 'media'
-                          ? 'bg-blue-700 text-white border-blue-700'
-                          : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                      }`}
+                      onClick={() => visitorMediaInputRef.current?.click()}
+                      className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
                     >
-                      <Film className="w-3.5 h-3.5" aria-hidden="true" />
-                      Edit Photo / Video
+                      <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+                      Upload Your Media
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDownloadSlideToGallery}
+                      className="px-3.5 py-2 text-xs font-semibold text-slate-950 bg-white hover:bg-slate-100 rounded transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                    >
+                      <Download className="w-3.5 h-3.5" aria-hidden="true" />
+                      Download to Gallery
                     </button>
                   </div>
                 </div>
 
-                {/* Interactive Slide Stage with 3D Perspective & Animated Headlines */}
-                <div className="preserve-3d">
+                {/* Centered 3D Spatial Showcase Slide Stage (Locked Base Copy, Dynamic Zoom + 3D Tilt Active) */}
+                <div className="max-w-5xl mx-auto preserve-3d">
                   <SlideCanvas
                     slide={currentSlide}
                     slideIndex={activeSlideIndex}
@@ -945,558 +929,660 @@ export default function App() {
                     theme={activeTheme}
                     typography={activeTypography}
                     aspectRatio={aspectRatio}
-                    showGridGuides={showGridGuides}
-                    editable={true}
+                    showGridGuides={false}
+                    editable={false}
                     headlineAnimation={headlineAnimation}
                     enable3DDesignMotion={enable3DCardTilt}
-                    onUpdateSlideField={handleUpdateSlideField}
-                    onUpdateSlideMedia={handleUpdateSlideMedia}
                   />
                 </div>
 
-                {/* Speaker Notes Bar Below Stage */}
-                <div className="bg-white/95 border border-slate-200 p-4 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <label
-                      htmlFor="speaker-notes-textarea"
-                      className="font-semibold text-slate-800"
-                    >
-                      Presenter Teleprompter & Speaker Notes
-                    </label>
-                    <span className="font-mono tabular-nums">
-                      Slide {String(activeSlideIndex + 1).padStart(2, '0')}
+                {/* Visitor Injected Media Memory Strip */}
+                <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/15 text-xs text-slate-300">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sky-300">
+                      Local Browser Memory Status:
+                    </span>
+                    <span>
+                      {visitorUploadedAssets.length === 0
+                        ? 'Ready for local photo or funny video upload (0 repository files modified).'
+                        : `${visitorUploadedAssets.length} custom media file(s) active in local memory (${visitorUploadedAssets
+                            .map((a) => a.name)
+                            .join(', ')}).`}
                     </span>
                   </div>
-                  <textarea
-                    id="speaker-notes-textarea"
-                    rows={2}
-                    value={currentSlide.speakerNotes}
-                    onChange={(e) =>
-                      handleUpdateSlideField('speakerNotes', e.target.value)
-                    }
-                    placeholder="Add talking points or pacing cues for this slide..."
-                    className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded p-2.5 focus:outline-none focus:border-blue-700"
-                  />
+                  <div className="font-mono text-[11px] text-slate-400">
+                    High-Res Canvas Export: 1920×1080 PNG
+                  </div>
                 </div>
               </div>
-
-              {/* RIGHT INSPECTOR (3 Cols): Copy, Photo & Video Editor, and Theme Inspector */}
-              <aside
-                aria-label="Slide content, photo video editor, and theme inspector"
-                className="lg:col-span-3 bg-white/95 border border-slate-200 p-4 space-y-4"
+            ) : (
+              /* ADMIN MODE (?mode=admin): Full 3-Pane Studio Workspace Grid Unlocked */
+              <div
+                data-testid="admin-studio-workspace"
+                className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
               >
-                {/* Segmented Inspector Mode Switch (3 Tabs) */}
-                <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-md">
-                  <button
-                    type="button"
-                    onClick={() => setInspectorTab('content')}
-                    className={`py-1.5 px-1.5 text-[11px] font-medium rounded transition-colors inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
-                      inspectorTab === 'content'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Layers className="w-3 h-3" aria-hidden="true" />
-                    Copy
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInspectorTab('media')}
-                    className={`py-1.5 px-1.5 text-[11px] font-medium rounded transition-colors inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
-                      inspectorTab === 'media'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Film className="w-3 h-3" aria-hidden="true" />
-                    Photo / Video
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInspectorTab('theme')}
-                    className={`py-1.5 px-1.5 text-[11px] font-medium rounded transition-colors inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
-                      inspectorTab === 'theme'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Palette className="w-3 h-3" aria-hidden="true" />
-                    Theme
-                  </button>
-                </div>
-
-                {inspectorTab === 'content' && (
-                  <div className="space-y-3">
+                {/* LEFT RAIL (3 Cols): Deck Metadata & Slide Filmstrip */}
+                <aside
+                  aria-label="Slide filmstrip and deck structure"
+                  className="lg:col-span-3 bg-white/95 border border-slate-200 p-4 space-y-4"
+                >
+                  <div className="space-y-3 pb-3 border-b border-slate-200">
                     <div>
                       <label
-                        htmlFor="inspector-kicker"
+                        htmlFor="studio-deck-title-input"
                         className="block text-[11px] font-medium text-slate-500 mb-1"
                       >
-                        Section Kicker
+                        Active Presentation Title
                       </label>
                       <input
-                        id="inspector-kicker"
+                        id="studio-deck-title-input"
                         type="text"
-                        value={currentSlide.sectionKicker}
-                        onChange={(e) =>
-                          handleUpdateSlideField('sectionKicker', e.target.value)
-                        }
-                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
+                        value={deckTitle}
+                        onChange={(e) => setDeckTitle(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs font-semibold bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
                       />
                     </div>
 
-                    <div>
-                      <label
-                        htmlFor="inspector-headline"
-                        className="block text-[11px] font-medium text-slate-500 mb-1"
-                      >
-                        Primary Slide Headline
-                      </label>
-                      <textarea
-                        id="inspector-headline"
-                        rows={2}
-                        value={currentSlide.headline}
-                        onChange={(e) =>
-                          handleUpdateSlideField('headline', e.target.value)
-                        }
-                        className="w-full px-2.5 py-1.5 text-xs font-semibold bg-slate-50 border border-slate-300 rounded text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="inspector-subtitle"
-                        className="block text-[11px] font-medium text-slate-500 mb-1"
-                      >
-                        Subtitle / Analytical Lead-In
-                      </label>
-                      <input
-                        id="inspector-subtitle"
-                        type="text"
-                        value={currentSlide.subtitle}
-                        onChange={(e) =>
-                          handleUpdateSlideField('subtitle', e.target.value)
-                        }
-                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="inspector-body"
-                        className="block text-[11px] font-medium text-slate-500 mb-1"
-                      >
-                        Narrative Body Copy
-                      </label>
-                      <textarea
-                        id="inspector-body"
-                        rows={3}
-                        value={currentSlide.bodyCopy}
-                        onChange={(e) =>
-                          handleUpdateSlideField('bodyCopy', e.target.value)
-                        }
-                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="inspector-footnote"
-                        className="block text-[11px] font-medium text-slate-500 mb-1"
-                      >
-                        Source Citation / Footnote
-                      </label>
-                      <input
-                        id="inspector-footnote"
-                        type="text"
-                        value={currentSlide.footnote}
-                        onChange={(e) =>
-                          handleUpdateSlideField('footnote', e.target.value)
-                        }
-                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
-                      />
-                    </div>
-
-                    {/* Editable KPI Metric Cards when KPIs exist on slide */}
-                    {currentSlide.kpis.length > 0 && (
-                      <div className="pt-3 border-t border-slate-200 space-y-2">
-                        <div className="text-[11px] font-semibold text-slate-700">
-                          Tabular KPI Metrics ({currentSlide.kpis.length})
-                        </div>
-                        {currentSlide.kpis.slice(0, 2).map((kpi, kIdx) => (
-                          <div
-                            key={kpi.id}
-                            className="p-2 bg-slate-50 border border-slate-200 space-y-1.5"
-                          >
-                            <input
-                              type="text"
-                              aria-label={`KPI ${kIdx + 1} label`}
-                              value={kpi.label}
-                              onChange={(e) => {
-                                const updated = currentSlide.kpis.map(
-                                  (item, i) =>
-                                    i === kIdx
-                                      ? { ...item, label: e.target.value }
-                                      : item
-                                );
-                                handleUpdateSlideField('kpis', updated);
-                              }}
-                              className="w-full px-2 py-1 text-[11px] bg-white border border-slate-200 rounded"
-                            />
-                            <div className="grid grid-cols-2 gap-1.5">
-                              <input
-                                type="text"
-                                aria-label={`KPI ${kIdx + 1} value`}
-                                value={kpi.value}
-                                onChange={(e) => {
-                                  const updated = currentSlide.kpis.map(
-                                    (item, i) =>
-                                      i === kIdx
-                                        ? { ...item, value: e.target.value }
-                                        : item
-                                  );
-                                  handleUpdateSlideField('kpis', updated);
-                                }}
-                                className="w-full px-2 py-1 text-xs font-mono font-bold bg-white border border-slate-200 rounded"
-                              />
-                              <input
-                                type="text"
-                                aria-label={`KPI ${kIdx + 1} delta`}
-                                value={kpi.delta}
-                                onChange={(e) => {
-                                  const updated = currentSlide.kpis.map(
-                                    (item, i) =>
-                                      i === kIdx
-                                        ? { ...item, delta: e.target.value }
-                                        : item
-                                  );
-                                  handleUpdateSlideField('kpis', updated);
-                                }}
-                                className="w-full px-2 py-1 text-[11px] font-mono bg-white border border-slate-200 rounded"
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {inspectorTab === 'media' && (
-                  <div className="space-y-3.5">
-                    <div className="space-y-1.5">
-                      <span className="block text-[11px] font-semibold text-slate-700">
-                        Slide Visual Mode
-                      </span>
-                      <div className="grid grid-cols-3 gap-1">
-                        {(
-                          [
-                            { id: 'artwork', label: 'Vector SVG' },
-                            { id: 'photo', label: 'Photo' },
-                            { id: 'video', label: 'Video' },
-                          ] as { id: SlideMediaMode; label: string }[]
-                        ).map((m) => (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => {
-                              if (
-                                m.id === 'photo' &&
-                                !currentMedia.url.startsWith('data:image')
-                              ) {
-                                handleUpdateSlideMedia({
-                                  mode: 'photo',
-                                  url: SAMPLE_MEDIA_ASSETS[0].url,
-                                  caption: SAMPLE_MEDIA_ASSETS[0].caption,
-                                });
-                              } else if (
-                                m.id === 'video' &&
-                                !currentMedia.url.startsWith('procedural://')
-                              ) {
-                                handleUpdateSlideMedia({
-                                  mode: 'video',
-                                  url: 'procedural://cinema-prism',
-                                  caption: SAMPLE_MEDIA_ASSETS[4].caption,
-                                });
-                              } else {
-                                handleUpdateSlideMedia({ mode: m.id });
-                              }
-                            }}
-                            className={`py-1.5 px-2 text-xs font-medium rounded border transition-colors whitespace-nowrap shrink-0 ${
-                              currentMedia.mode === m.id
-                                ? 'bg-blue-700 text-white border-blue-700'
-                                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                            }`}
-                          >
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Upload Local Photo or Video File */}
-                    <div className="pt-2 border-t border-slate-200 space-y-2">
-                      <button
-                        type="button"
-                        onClick={() => studioMediaInputRef.current?.click()}
-                        className="w-full py-2 px-3 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0"
-                      >
-                        <Upload className="w-3.5 h-3.5" aria-hidden="true" />
-                        Upload Your Own Photo / Video
-                      </button>
-
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label
-                          htmlFor="inspector-media-preset"
+                          htmlFor="studio-template-preset"
                           className="block text-[11px] font-medium text-slate-500 mb-1"
                         >
-                          Or Choose Studio Photo / Video Preset
+                          Template Base ({INITIAL_TEMPLATES.length})
                         </label>
                         <select
-                          id="inspector-media-preset"
-                          value={currentMedia.url}
+                          id="studio-template-preset"
+                          value={activeTemplateId}
                           onChange={(e) => {
-                            const found = SAMPLE_MEDIA_ASSETS.find(
-                              (a) => a.url === e.target.value
+                            const found = INITIAL_TEMPLATES.find(
+                              (t) => t.id === e.target.value
                             );
-                            if (found) {
-                              handleUpdateSlideMedia({
-                                mode: found.type,
-                                url: found.url,
-                                caption: found.caption,
-                              });
-                            }
+                            if (found) handleLoadTemplateIntoStudio(found);
                           }}
                           className="w-full px-2 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-800"
                         >
-                          {SAMPLE_MEDIA_ASSETS.map((a) => (
-                            <option key={a.id} value={a.url}>
-                              [{a.type.toUpperCase()}] {a.title}
+                          {INITIAL_TEMPLATES.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.title}
                             </option>
                           ))}
                         </select>
                       </div>
-                    </div>
 
-                    {/* 1-Click Color Grading LUT Presets */}
-                    <div className="pt-2 border-t border-slate-200 space-y-1.5">
-                      <span className="block text-[11px] font-semibold text-slate-700">
-                        1-Click LUT Filter Presets
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {MEDIA_FILTER_PRESETS.map((preset) => (
+                      <div>
+                        <label
+                          htmlFor="studio-aspect-select"
+                          className="block text-[11px] font-medium text-slate-500 mb-1"
+                        >
+                          Frame Ratio
+                        </label>
+                        <select
+                          id="studio-aspect-select"
+                          value={aspectRatio}
+                          onChange={(e) =>
+                            setAspectRatio(e.target.value as AspectRatioFormat)
+                          }
+                          className="w-full px-2 py-1.5 text-xs font-mono bg-slate-50 border border-slate-300 rounded text-slate-800"
+                        >
+                          <option value="16:9">16:9 Wide</option>
+                          <option value="4:3">4:3 Classic</option>
+                          <option value="A4">A4 Print</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Slide Filmstrip Header */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-800 font-mono tabular-nums">
+                      Slides ({slides.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAddBlankSlide}
+                      className="px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 rounded transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                      Add Slide
+                    </button>
+                  </div>
+
+                  {/* Slide Filmstrip List */}
+                  <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                    {slides.map((s, idx) => {
+                      const isCurrent = idx === activeSlideIndex;
+                      return (
+                        <div
+                          key={s.id}
+                          className={`p-2.5 border transition-colors ${
+                            isCurrent
+                              ? 'border-blue-700 bg-blue-50/40'
+                              : 'border-slate-200 bg-slate-50/60 hover:border-slate-300'
+                          }`}
+                        >
                           <button
-                            key={preset.id}
                             type="button"
-                            onClick={() =>
-                              handleUpdateSlideMedia({
-                                brightness: preset.brightness,
-                                contrast: preset.contrast,
-                                saturation: preset.saturation,
-                                sepia: preset.sepia,
-                                blurPx: preset.blurPx,
-                              })
-                            }
-                            className="px-2 py-1 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-800 rounded whitespace-nowrap shrink-0"
+                            onClick={() => setActiveSlideIndex(idx)}
+                            className="w-full text-left space-y-1"
                           >
-                            {preset.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Real-Time Optical Sliders */}
-                    <div className="pt-2 border-t border-slate-200 space-y-2">
-                      <div>
-                        <div className="flex justify-between text-[11px] text-slate-600">
-                          <label htmlFor="insp-brightness">Brightness</label>
-                          <span className="font-mono tabular-nums">
-                            {currentMedia.brightness}%
-                          </span>
-                        </div>
-                        <input
-                          id="insp-brightness"
-                          type="range"
-                          min={50}
-                          max={150}
-                          value={currentMedia.brightness}
-                          onChange={(e) =>
-                            handleUpdateSlideMedia({
-                              brightness: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-blue-700"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-[11px] text-slate-600">
-                          <label htmlFor="insp-contrast">Contrast</label>
-                          <span className="font-mono tabular-nums">
-                            {currentMedia.contrast}%
-                          </span>
-                        </div>
-                        <input
-                          id="insp-contrast"
-                          type="range"
-                          min={50}
-                          max={160}
-                          value={currentMedia.contrast}
-                          onChange={(e) =>
-                            handleUpdateSlideMedia({
-                              contrast: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-blue-700"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-[11px] text-slate-600">
-                          <label htmlFor="insp-saturation">Saturation</label>
-                          <span className="font-mono tabular-nums">
-                            {currentMedia.saturation}%
-                          </span>
-                        </div>
-                        <input
-                          id="insp-saturation"
-                          type="range"
-                          min={0}
-                          max={180}
-                          value={currentMedia.saturation}
-                          onChange={(e) =>
-                            handleUpdateSlideMedia({
-                              saturation: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-blue-700"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-[11px] text-slate-600">
-                          <label htmlFor="insp-zoom">Zoom & Crop</label>
-                          <span className="font-mono tabular-nums">
-                            {currentMedia.zoom.toFixed(2)}x
-                          </span>
-                        </div>
-                        <input
-                          id="insp-zoom"
-                          type="range"
-                          min={1}
-                          max={1.6}
-                          step={0.05}
-                          value={currentMedia.zoom}
-                          onChange={(e) =>
-                            handleUpdateSlideMedia({
-                              zoom: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-blue-700"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Media Caption Input */}
-                    <div className="pt-2 border-t border-slate-200">
-                      <label
-                        htmlFor="inspector-media-caption"
-                        className="block text-[11px] font-medium text-slate-500 mb-1"
-                      >
-                        Media Frame Caption
-                      </label>
-                      <input
-                        id="inspector-media-caption"
-                        type="text"
-                        value={currentMedia.caption}
-                        onChange={(e) =>
-                          handleUpdateSlideMedia({ caption: e.target.value })
-                        }
-                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {inspectorTab === 'theme' && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="text-xs font-semibold text-slate-800">
-                        Color System Palette
-                      </div>
-                      <div className="space-y-1.5">
-                        {themes.map((t) => {
-                          const isSelected = t.id === activeTheme.id;
-                          const ratio = calculateContrastRatio(
-                            t.textPrimaryHex,
-                            t.backgroundHex
-                          );
-                          return (
-                            <button
-                              key={t.id}
-                              type="button"
-                              onClick={() => setActiveTheme(t)}
-                              className={`w-full p-2.5 text-left border transition-colors flex items-center justify-between gap-2 ${
-                                isSelected
-                                  ? 'border-blue-700 bg-blue-50/40'
-                                  : 'border-slate-200 hover:border-slate-300'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span
-                                  className="w-4 h-4 border border-slate-300 shrink-0"
-                                  style={{ backgroundColor: t.backgroundHex }}
-                                />
-                                <span
-                                  className="w-3 h-4 shrink-0"
-                                  style={{ backgroundColor: t.accentHex }}
-                                />
-                                <span className="text-xs font-medium text-slate-900 truncate">
-                                  {t.name}
-                                </span>
-                              </div>
-                              <span className="text-[11px] font-mono tabular-nums text-slate-500 shrink-0">
-                                {ratio}:1
+                            <div className="flex items-center justify-between text-[11px] font-mono tabular-nums text-slate-500">
+                              <span className="font-semibold text-slate-800">
+                                Slide {String(idx + 1).padStart(2, '0')}
                               </span>
+                              <span>{s.layout}</span>
+                            </div>
+                            <div className="text-xs font-semibold text-slate-900 truncate">
+                              {s.headline}
+                            </div>
+                          </button>
+
+                          {/* Per-Slide Reorder / Duplicate / Delete Actions */}
+                          <div className="flex items-center justify-end gap-1 pt-2 mt-2 border-t border-slate-200/80">
+                            <button
+                              type="button"
+                              aria-label={`Move slide ${idx + 1} up`}
+                              disabled={idx === 0}
+                              onClick={() => handleMoveSlide(s.id, 'up')}
+                              className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
                             </button>
-                          );
-                        })}
-                      </div>
+                            <button
+                              type="button"
+                              aria-label={`Move slide ${idx + 1} down`}
+                              disabled={idx === slides.length - 1}
+                              onClick={() => handleMoveSlide(s.id, 'down')}
+                              className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Duplicate slide ${idx + 1}`}
+                              onClick={() => handleDuplicateSlide(s.id)}
+                              className="p-1 text-slate-500 hover:text-slate-900"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Delete slide ${idx + 1}`}
+                              disabled={slides.length <= 1}
+                              onClick={() => handleDeleteSlide(s.id)}
+                              className="p-1 text-slate-500 hover:text-red-600 disabled:opacity-30"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </aside>
+
+                {/* CENTER STAGE (6 Cols): Live Slide Canvas & Layout Switcher */}
+                <div className="lg:col-span-6 space-y-4">
+                  {/* Canvas Toolbar */}
+                  <div className="bg-white/95 border border-slate-200 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <label
+                        htmlFor="slide-layout-select"
+                        className="text-xs font-medium text-slate-600 whitespace-nowrap"
+                      >
+                        Layout:
+                      </label>
+                      <select
+                        id="slide-layout-select"
+                        aria-label="Slide master layout"
+                        value={currentSlide.layout}
+                        onChange={(e) =>
+                          handleUpdateSlideField(
+                            'layout',
+                            e.target.value as SlideLayoutType
+                          )
+                        }
+                        className="px-2 py-1.5 text-xs font-medium bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
+                      >
+                        {LAYOUT_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="space-y-2 pt-3 border-t border-slate-200">
-                      <div className="text-xs font-semibold text-slate-800">
-                        Typography Pairing
-                      </div>
-                      <div className="space-y-1.5">
-                        {TYPOGRAPHY_PAIRS.map((tp) => {
-                          const isSelected = tp.id === activeTypography.id;
-                          return (
-                            <button
-                              key={tp.id}
-                              type="button"
-                              onClick={() => setActiveTypography(tp)}
-                              className={`w-full p-2.5 text-left border transition-colors ${
-                                isSelected
-                                  ? 'border-blue-700 bg-blue-50/40'
-                                  : 'border-slate-200 hover:border-slate-300'
-                              }`}
-                            >
-                              <div className="text-xs font-semibold text-slate-900">
-                                {tp.name}
-                              </div>
-                              <div className="text-[11px] text-slate-500 mt-0.5">
-                                {tp.description}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <label
+                        htmlFor="slide-artwork-select"
+                        className="text-xs font-medium text-slate-600 whitespace-nowrap"
+                      >
+                        Figure:
+                      </label>
+                      <select
+                        id="slide-artwork-select"
+                        aria-label="Slide technical figure"
+                        value={currentSlide.artworkId}
+                        onChange={(e) =>
+                          handleUpdateSlideField(
+                            'artworkId',
+                            e.target.value as VisualArtworkId
+                          )
+                        }
+                        className="px-2 py-1.5 text-xs font-medium bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
+                      >
+                        {ARTWORK_OPTIONS.map((art) => (
+                          <option key={art.value} value={art.value}>
+                            {art.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowGridGuides((prev) => !prev)}
+                        aria-pressed={showGridGuides}
+                        className={`px-2.5 py-1.5 text-xs font-medium border rounded transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0 ${
+                          showGridGuides
+                            ? 'bg-rose-50 border-rose-300 text-rose-900'
+                            : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Grid className="w-3.5 h-3.5" aria-hidden="true" />
+                        12-Col Grid
+                      </button>
                     </div>
                   </div>
-                )}
-              </aside>
-            </div>
+
+                  {/* Interactive Slide Stage with 3D Perspective & Animated Headlines */}
+                  <div className="preserve-3d">
+                    <SlideCanvas
+                      slide={currentSlide}
+                      slideIndex={activeSlideIndex}
+                      totalSlides={slides.length}
+                      deckTitle={deckTitle}
+                      theme={activeTheme}
+                      typography={activeTypography}
+                      aspectRatio={aspectRatio}
+                      showGridGuides={showGridGuides}
+                      editable={true}
+                      headlineAnimation={headlineAnimation}
+                      enable3DDesignMotion={enable3DCardTilt}
+                      onUpdateSlideField={handleUpdateSlideField}
+                    />
+                  </div>
+
+                  {/* Speaker Notes Bar Below Stage */}
+                  <div className="bg-white/95 border border-slate-200 p-4 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <label
+                        htmlFor="speaker-notes-textarea"
+                        className="font-semibold text-slate-800"
+                      >
+                        Presenter Teleprompter & Speaker Notes
+                      </label>
+                      <span className="font-mono tabular-nums">
+                        Slide {String(activeSlideIndex + 1).padStart(2, '0')}
+                      </span>
+                    </div>
+                    <textarea
+                      id="speaker-notes-textarea"
+                      rows={2}
+                      value={currentSlide.speakerNotes}
+                      onChange={(e) =>
+                        handleUpdateSlideField('speakerNotes', e.target.value)
+                      }
+                      placeholder="Add talking points or pacing cues for this slide..."
+                      className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded p-2.5 focus:outline-none focus:border-blue-700"
+                    />
+                  </div>
+                </div>
+
+                {/* RIGHT INSPECTOR (3 Cols): Copy, Photo & Video Editor, and Theme Inspector */}
+                <aside
+                  aria-label="Slide content, photo video editor, and theme inspector"
+                  className="lg:col-span-3 bg-white/95 border border-slate-200 p-4 space-y-4"
+                >
+                  {/* Segmented Inspector Mode Switch (3 Tabs) */}
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-md">
+                    <button
+                      type="button"
+                      onClick={() => setInspectorTab('content')}
+                      className={`py-1.5 px-1.5 text-[11px] font-medium rounded transition-colors inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
+                        inspectorTab === 'content'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Layers className="w-3 h-3" aria-hidden="true" />
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInspectorTab('media')}
+                      className={`py-1.5 px-1.5 text-[11px] font-medium rounded transition-colors inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
+                        inspectorTab === 'media'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Film className="w-3 h-3" aria-hidden="true" />
+                      Photo / Video
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInspectorTab('theme')}
+                      className={`py-1.5 px-1.5 text-[11px] font-medium rounded transition-colors inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
+                        inspectorTab === 'theme'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Palette className="w-3 h-3" aria-hidden="true" />
+                      Theme
+                    </button>
+                  </div>
+
+                  {inspectorTab === 'content' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label
+                          htmlFor="inspector-kicker"
+                          className="block text-[11px] font-medium text-slate-500 mb-1"
+                        >
+                          Section Kicker
+                        </label>
+                        <input
+                          id="inspector-kicker"
+                          type="text"
+                          value={currentSlide.sectionKicker}
+                          onChange={(e) =>
+                            handleUpdateSlideField(
+                              'sectionKicker',
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="inspector-headline"
+                          className="block text-[11px] font-medium text-slate-500 mb-1"
+                        >
+                          Primary Slide Headline
+                        </label>
+                        <textarea
+                          id="inspector-headline"
+                          rows={2}
+                          value={currentSlide.headline}
+                          onChange={(e) =>
+                            handleUpdateSlideField('headline', e.target.value)
+                          }
+                          className="w-full px-2.5 py-1.5 text-xs font-semibold bg-slate-50 border border-slate-300 rounded text-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="inspector-subtitle"
+                          className="block text-[11px] font-medium text-slate-500 mb-1"
+                        >
+                          Subtitle / Analytical Lead-In
+                        </label>
+                        <input
+                          id="inspector-subtitle"
+                          type="text"
+                          value={currentSlide.subtitle}
+                          onChange={(e) =>
+                            handleUpdateSlideField('subtitle', e.target.value)
+                          }
+                          className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="inspector-body"
+                          className="block text-[11px] font-medium text-slate-500 mb-1"
+                        >
+                          Narrative Body Copy
+                        </label>
+                        <textarea
+                          id="inspector-body"
+                          rows={3}
+                          value={currentSlide.bodyCopy}
+                          onChange={(e) =>
+                            handleUpdateSlideField('bodyCopy', e.target.value)
+                          }
+                          className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="inspector-footnote"
+                          className="block text-[11px] font-medium text-slate-500 mb-1"
+                        >
+                          Source Citation / Footnote
+                        </label>
+                        <input
+                          id="inspector-footnote"
+                          type="text"
+                          value={currentSlide.footnote}
+                          onChange={(e) =>
+                            handleUpdateSlideField('footnote', e.target.value)
+                          }
+                          className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {inspectorTab === 'media' && (
+                    <div className="space-y-3.5">
+                      <div className="space-y-1.5">
+                        <span className="block text-[11px] font-semibold text-slate-700">
+                          Slide Visual Mode
+                        </span>
+                        <div className="grid grid-cols-3 gap-1">
+                          {(
+                            [
+                              { id: 'artwork', label: 'Vector SVG' },
+                              { id: 'photo', label: 'Photo' },
+                              { id: 'video', label: 'Video' },
+                            ] as { id: SlideMediaMode; label: string }[]
+                          ).map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                if (
+                                  m.id === 'photo' &&
+                                  !currentMedia.url.startsWith('data:image')
+                                ) {
+                                  handleUpdateSlideMedia({
+                                    mode: 'photo',
+                                    url: SAMPLE_MEDIA_ASSETS[0].url,
+                                    caption: SAMPLE_MEDIA_ASSETS[0].caption,
+                                  });
+                                } else if (
+                                  m.id === 'video' &&
+                                  !currentMedia.url.startsWith('procedural://')
+                                ) {
+                                  handleUpdateSlideMedia({
+                                    mode: 'video',
+                                    url: 'procedural://cinema-prism',
+                                    caption: SAMPLE_MEDIA_ASSETS[3].caption,
+                                  });
+                                } else {
+                                  handleUpdateSlideMedia({ mode: m.id });
+                                }
+                              }}
+                              className={`py-1.5 px-2 text-xs font-medium rounded border transition-colors whitespace-nowrap shrink-0 ${
+                                currentMedia.mode === m.id
+                                  ? 'bg-blue-700 text-white border-blue-700'
+                                  : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                              }`}
+                            >
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200 space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => studioMediaInputRef.current?.click()}
+                          className="w-full py-2 px-3 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0"
+                        >
+                          <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+                          Upload Your Own Photo / Video
+                        </button>
+
+                        <div>
+                          <label
+                            htmlFor="inspector-media-preset"
+                            className="block text-[11px] font-medium text-slate-500 mb-1"
+                          >
+                            Or Choose Studio Photo / Video Preset
+                          </label>
+                          <select
+                            id="inspector-media-preset"
+                            value={currentMedia.url}
+                            onChange={(e) => {
+                              const found = SAMPLE_MEDIA_ASSETS.find(
+                                (a) => a.url === e.target.value
+                              );
+                              if (found) {
+                                handleUpdateSlideMedia({
+                                  mode: found.type,
+                                  url: found.url,
+                                  caption: found.caption,
+                                });
+                              }
+                            }}
+                            className="w-full px-2 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-800"
+                          >
+                            {SAMPLE_MEDIA_ASSETS.map((a) => (
+                              <option key={a.id} value={a.url}>
+                                [{a.type.toUpperCase()}] {a.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200 space-y-1.5">
+                        <span className="block text-[11px] font-semibold text-slate-700">
+                          1-Click LUT Filter Presets
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {MEDIA_FILTER_PRESETS.map((preset) => (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              onClick={() =>
+                                handleUpdateSlideMedia({
+                                  brightness: preset.brightness,
+                                  contrast: preset.contrast,
+                                  saturation: preset.saturation,
+                                  sepia: preset.sepia,
+                                  blurPx: preset.blurPx,
+                                })
+                              }
+                              className="px-2 py-1 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-800 rounded whitespace-nowrap shrink-0"
+                            >
+                              {preset.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {inspectorTab === 'theme' && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold text-slate-800">
+                          Color System Palette
+                        </div>
+                        <div className="space-y-1.5">
+                          {themes.map((t) => {
+                            const isSelected = t.id === activeTheme.id;
+                            const ratio = calculateContrastRatio(
+                              t.textPrimaryHex,
+                              t.backgroundHex
+                            );
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => setActiveTheme(t)}
+                                className={`w-full p-2.5 text-left border transition-colors flex items-center justify-between gap-2 ${
+                                  isSelected
+                                    ? 'border-blue-700 bg-blue-50/40'
+                                    : 'border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span
+                                    className="w-4 h-4 border border-slate-300 shrink-0"
+                                    style={{ backgroundColor: t.backgroundHex }}
+                                  />
+                                  <span
+                                    className="w-3 h-4 shrink-0"
+                                    style={{ backgroundColor: t.accentHex }}
+                                  />
+                                  <span className="text-xs font-medium text-slate-900 truncate">
+                                    {t.name}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] font-mono tabular-nums text-slate-500 shrink-0">
+                                  {ratio}:1
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-3 border-t border-slate-200">
+                        <div className="text-xs font-semibold text-slate-800">
+                          Typography Pairing
+                        </div>
+                        <div className="space-y-1.5">
+                          {TYPOGRAPHY_PAIRS.map((tp) => {
+                            const isSelected = tp.id === activeTypography.id;
+                            return (
+                              <button
+                                key={tp.id}
+                                type="button"
+                                onClick={() => setActiveTypography(tp)}
+                                className={`w-full p-2.5 text-left border transition-colors ${
+                                  isSelected
+                                    ? 'border-blue-700 bg-blue-50/40'
+                                    : 'border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                <div className="text-xs font-semibold text-slate-900">
+                                  {tp.name}
+                                </div>
+                                <div className="text-[11px] text-slate-500 mt-0.5">
+                                  {tp.description}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </aside>
+              </div>
+            )}
           </div>
         </section>
 
@@ -1529,6 +1615,7 @@ export default function App() {
           activeTypography={activeTypography}
           headlineAnimation={headlineAnimation}
           enable3DDesignMotion={enable3DCardTilt}
+          isAdminMode={isAdminMode}
           onSelectTheme={setActiveTheme}
           onSelectTypography={setActiveTypography}
           onCreateCustomTheme={handleCreateCustomTheme}
@@ -1554,67 +1641,73 @@ export default function App() {
                   className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-display"
                 />
                 <p className="text-sm text-slate-600">
-                  Resume customizing your saved presentation decks or export production-ready HTML and JSON specifications for board distribution.
+                  Explore saved presentation snapshots or download high-resolution slide captures directly to your device gallery.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsExportOpen(true)}
-                className="px-4 py-2 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors whitespace-nowrap shrink-0"
-              >
-                Save Current Studio Deck
-              </button>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleDownloadSlideToGallery}
+                  className="px-4 py-2 text-xs font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5" aria-hidden="true" />
+                  Download Active Slide to Gallery
+                </button>
+                {isAdminMode && (
+                  <button
+                    type="button"
+                    onClick={() => setIsExportOpen(true)}
+                    className="px-4 py-2 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors whitespace-nowrap shrink-0"
+                  >
+                    Export Full Deck Bundle
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Saved Decks Grid */}
-            {savedDecks.length === 0 ? (
-              <div className="p-8 bg-white border border-slate-200 text-center space-y-2">
-                <p className="text-sm font-semibold text-slate-800">
-                  No saved presentation snapshots in your workspace yet
-                </p>
-                <p className="text-xs text-slate-500">
-                  Click "Save Snapshot" in the Studio toolbar to store customized decks here.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 preserve-3d">
-                {savedDecks.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    className={`bg-white/95 border border-slate-200 p-5 flex flex-col justify-between space-y-4 ${
-                      enable3DCardTilt ? 'animate-design-orbit-3d' : ''
-                    }`}
-                    style={{ animationDelay: `${idx * 200}ms` }}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-slate-500 font-mono tabular-nums">
-                        <span>{item.slides.length} Slides · {item.aspectRatio}</span>
-                        <span>Saved {item.savedAt}</span>
-                      </div>
-                      <AnimatedHeadline
-                        as="h3"
-                        text={item.name}
-                        animationStyle={headlineAnimation}
-                        primaryColorHex="#0F172A"
-                        accentColorHex={item.theme.accentHex}
-                        className="text-base font-bold text-slate-900 font-display"
-                      />
-                      <p className="text-xs text-slate-600">
-                        Base Architecture: {item.sourceTemplateTitle} · Theme: {item.theme.name}
-                      </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 preserve-3d">
+              {savedDecks.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className={`bg-white/95 border border-slate-200 p-5 flex flex-col justify-between space-y-4 ${
+                    enable3DCardTilt ? 'animate-design-orbit-3d' : ''
+                  }`}
+                  style={{ animationDelay: `${idx * 200}ms` }}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-slate-500 font-mono tabular-nums">
+                      <span>
+                        {item.slides.length} Slides · {item.aspectRatio}
+                      </span>
+                      <span>Saved {item.savedAt}</span>
                     </div>
+                    <AnimatedHeadline
+                      as="h3"
+                      text={item.name}
+                      animationStyle={headlineAnimation}
+                      primaryColorHex="#0F172A"
+                      accentColorHex={item.theme.accentHex}
+                      className="text-base font-bold text-slate-900 font-display"
+                    />
+                    <p className="text-xs text-slate-600">
+                      Base Architecture: {item.sourceTemplateTitle} · Theme:{' '}
+                      {item.theme.name}
+                    </p>
+                  </div>
 
-                    <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleLoadSavedDeck(item)}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                      >
-                        <FolderOpen className="w-3.5 h-3.5" aria-hidden="true" />
-                        Load in Studio
-                      </button>
+                  <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleLoadSavedDeck(item)}
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5" aria-hidden="true" />
+                      Load in Showcase
+                    </button>
 
+                    {isAdminMode && (
                       <button
                         type="button"
                         aria-label={`Delete saved deck ${item.name}`}
@@ -1623,11 +1716,11 @@ export default function App() {
                       >
                         Remove
                       </button>
-                    </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
 
             {/* Claim-to-Proof Adjacency: Quantitative Outcomes & Attributable Testimonials */}
             <div className="pt-8 border-t border-slate-200 grid grid-cols-1 lg:grid-cols-3 gap-6 preserve-3d">
@@ -1694,10 +1787,14 @@ export default function App() {
             </span>
             <span aria-hidden="true">·</span>
             <span>Architectural Presentation Design System</span>
+            <span aria-hidden="true">·</span>
+            <span className="font-mono text-[11px]">
+              {isAdminMode ? 'Admin Mode Active' : 'Visitor Showcase Mode'}
+            </span>
           </div>
           <div className="flex items-center gap-6">
             <a href="#studio-workspace" className="hover:text-slate-900">
-              Studio
+              Showcase
             </a>
             <a href="#template-gallery" className="hover:text-slate-900">
               Templates
@@ -1708,8 +1805,11 @@ export default function App() {
             <a href="#brand-systems" className="hover:text-slate-900">
               Brand Tokens
             </a>
-            <a href="#saved-decks" className="hover:text-slate-900">
-              Saved Decks
+            <a
+              href={isAdminMode ? '?' : '?mode=admin'}
+              className="font-mono text-slate-600 hover:text-blue-700"
+            >
+              {isAdminMode ? 'Exit Admin Mode' : 'Admin Access (?mode=admin)'}
             </a>
           </div>
         </div>

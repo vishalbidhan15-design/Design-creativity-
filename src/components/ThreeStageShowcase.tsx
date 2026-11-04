@@ -101,49 +101,114 @@ function createSlideCanvasTexture(
     ctx.lineTo(canvas.width - 56, 92);
     ctx.stroke();
 
+    const hasInjectedMedia =
+      slide.customMedia && slide.customMedia.mode !== 'artwork';
+    const maxHeadlineWidth = hasInjectedMedia ? 500 : canvas.width - 120;
+
     // Headline (word-wrapped up to 2 lines)
     ctx.fillStyle = theme.textPrimaryHex;
-    ctx.font = '700 42px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '700 38px "Plus Jakarta Sans", sans-serif';
     const words = slide.headline.split(' ');
     let line = '';
-    let y = 168;
+    let y = 164;
     for (let i = 0; i < words.length; i++) {
       const testLine = line + words[i] + ' ';
-      if (ctx.measureText(testLine).width > canvas.width - 120 && line !== '') {
+      if (ctx.measureText(testLine).width > maxHeadlineWidth && line !== '') {
         ctx.fillText(line.trim(), 56, y);
         line = words[i] + ' ';
-        y += 52;
-        if (y > 230) break;
+        y += 48;
+        if (y > 224) break;
       } else {
         line = testLine;
       }
     }
-    if (y <= 230 && line.trim()) {
+    if (y <= 224 && line.trim()) {
       ctx.fillText(line.trim(), 56, y);
     }
 
     // Subtitle
     ctx.fillStyle = theme.accentHex;
-    ctx.font = '600 24px "DM Sans", sans-serif';
-    ctx.fillText(slide.subtitle.slice(0, 62), 56, 286);
+    ctx.font = '600 22px "DM Sans", sans-serif';
+    ctx.fillText(
+      slide.subtitle.slice(0, hasInjectedMedia ? 36 : 62),
+      56,
+      278
+    );
+
+    if (hasInjectedMedia && slide.customMedia) {
+      // Designated Media Placeholder on Right Half of 3D Slide
+      const mx = 580;
+      const my = 122;
+      const mw = 388;
+      const mh = 362;
+
+      const mediaGrad = ctx.createLinearGradient(mx, my, mx + mw, my + mh);
+      mediaGrad.addColorStop(0, '#1E1B4B');
+      mediaGrad.addColorStop(0.5, '#311042');
+      mediaGrad.addColorStop(1, '#0F172A');
+      ctx.fillStyle = mediaGrad;
+      ctx.fillRect(mx, my, mw, mh);
+
+      ctx.strokeStyle = theme.accentHex;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(mx, my, mw, mh);
+
+      // Dynamic Aurora Wave / Media Preview Graphic inside 3D Placeholder
+      const waveColors = ['#38BDF8', '#F472B6', '#FBBF24'];
+      for (let wIdx = 0; wIdx < 3; wIdx++) {
+        ctx.beginPath();
+        ctx.strokeStyle = waveColors[wIdx];
+        ctx.lineWidth = 3;
+        for (let px = 16; px <= mw - 16; px += 12) {
+          const py =
+            my +
+            mh * 0.48 +
+            Math.sin(px * 0.025 + wIdx * 1.4 + slideIdx) * (26 + wIdx * 10);
+          if (px === 16) ctx.moveTo(mx + px, py);
+          else ctx.lineTo(mx + px, py);
+        }
+        ctx.stroke();
+      }
+
+      // Badge & Injected Media Caption inside 3D Slide
+      ctx.fillStyle = theme.accentHex;
+      ctx.fillRect(mx + 16, my + 16, 176, 30);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '700 14px "JetBrains Mono", monospace';
+      ctx.fillText(
+        `INJECTED ${slide.customMedia.mode.toUpperCase()}`,
+        mx + 28,
+        my + 36
+      );
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+      ctx.fillRect(mx + 2, my + mh - 54, mw - 4, 52);
+      ctx.fillStyle = '#F8FAFC';
+      ctx.font = '500 15px "JetBrains Mono", monospace';
+      ctx.fillText(
+        (slide.customMedia.caption || 'Visitor Media').slice(0, 34),
+        mx + 16,
+        my + mh - 22
+      );
+    }
 
     // KPI Cards Row at Bottom of Slide
     const kpiList =
       slide.kpis.length > 0
-        ? slide.kpis.slice(0, 3)
+        ? slide.kpis.slice(0, hasInjectedMedia ? 2 : 3)
         : [
             { label: 'Grid Precision', value: '12-Col', delta: 'WCAG AAA' },
             { label: 'Frame Aspect', value: '16:9 HD', delta: 'Vector Sync' },
             { label: 'Slide Layer', value: `#0${slideIdx + 1}`, delta: 'Active' },
-          ];
+          ].slice(0, hasInjectedMedia ? 2 : 3);
 
-    const cardWidth = 278;
+    const cardWidth = hasInjectedMedia ? 236 : 278;
     const cardHeight = 148;
     const startX = 56;
     const cardY = 336;
 
     kpiList.forEach((kpi, idx) => {
-      const x = startX + idx * (cardWidth + 32);
+      const x = startX + idx * (cardWidth + 24);
       ctx.fillStyle = theme.surfaceHex;
       ctx.fillRect(x, cardY, cardWidth, cardHeight);
       ctx.strokeStyle = theme.borderHex;
@@ -155,16 +220,16 @@ function createSlideCanvasTexture(
       ctx.fillRect(x, cardY, 64, 4);
 
       ctx.fillStyle = theme.textMutedHex;
-      ctx.font = '500 18px "DM Sans", sans-serif';
-      ctx.fillText(kpi.label.slice(0, 22), x + 20, cardY + 42);
+      ctx.font = '500 17px "DM Sans", sans-serif';
+      ctx.fillText(kpi.label.slice(0, 20), x + 18, cardY + 42);
 
       ctx.fillStyle = theme.textPrimaryHex;
-      ctx.font = '700 38px "JetBrains Mono", monospace';
-      ctx.fillText(kpi.value, x + 20, cardY + 94);
+      ctx.font = '700 34px "JetBrains Mono", monospace';
+      ctx.fillText(kpi.value, x + 18, cardY + 94);
 
       ctx.fillStyle = theme.accentHex;
-      ctx.font = '600 17px "JetBrains Mono", monospace';
-      ctx.fillText(kpi.delta, x + 20, cardY + 128);
+      ctx.font = '600 16px "JetBrains Mono", monospace';
+      ctx.fillText(kpi.delta, x + 18, cardY + 128);
     });
 
     // Footer bar

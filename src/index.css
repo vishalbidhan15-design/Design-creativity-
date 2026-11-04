@@ -138,6 +138,28 @@
   transform-style: preserve-3d;
 }
 
+@keyframes kenBurnsDynamicZoom {
+  0%, 100% {
+    transform: scale(1.02) translate3d(0%, 0%, 0);
+  }
+  50% {
+    transform: scale(1.12) translate3d(-1.5%, -1%, 0);
+  }
+}
+
+.animate-ken-burns-zoom {
+  animation: kenBurnsDynamicZoom 9s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  will-change: transform;
+}
+
+.aurora-ambient-stage {
+  background-image:
+    radial-gradient(circle at 14% 18%, rgba(56, 189, 248, 0.24) 0%, transparent 46%),
+    radial-gradient(circle at 86% 16%, rgba(139, 92, 246, 0.24) 0%, transparent 48%),
+    radial-gradient(circle at 52% 84%, rgba(236, 72, 153, 0.18) 0%, transparent 52%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(23, 37, 84, 0.94) 52%, rgba(30, 27, 75, 0.96) 100%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
@@ -146,4 +168,5 @@
     scroll-behavior: auto !important;
   }
 }
+
 

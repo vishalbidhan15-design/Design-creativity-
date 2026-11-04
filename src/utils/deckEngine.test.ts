@@ -18,6 +18,8 @@ import {
   MEDIA_FILTER_PRESETS,
   buildMediaFilterCss,
   buildMediaTransformCss,
+  isAdminModeFromSearch,
+  injectVisitorMediaIntoSlides,
 } from './deckEngine';
 import { INITIAL_TEMPLATES, THEME_PALETTES, TYPOGRAPHY_PAIRS } from '../data/initialTemplates';
 
@@ -174,4 +176,32 @@ test('buildMediaFilterCss and buildMediaTransformCss generate accurate CSS filte
   assert.equal(transformCss, 'scale(1.25) translate(10%, -5%)');
 });
 
+test('isAdminModeFromSearch and injectVisitorMediaIntoSlides support Visitor Showcase and Admin modes', () => {
+  assert.equal(isAdminModeFromSearch(''), false);
+  assert.equal(isAdminModeFromSearch('?mode=visitor'), false);
+  assert.equal(isAdminModeFromSearch('?mode=admin'), true);
+  assert.equal(isAdminModeFromSearch('?foo=bar&mode=ADMIN'), true);
 
+  const baseSlides = INITIAL_TEMPLATES[0].slides;
+  const injected = injectVisitorMediaIntoSlides(baseSlides, [
+    {
+      id: 'visitor-1',
+      type: 'video',
+      url: 'blob:http://localhost:3000/funny-video-1',
+      name: 'Funny Clip 1',
+    },
+    {
+      id: 'visitor-2',
+      type: 'photo',
+      url: 'blob:http://localhost:3000/photo-2',
+      name: 'Portrait 2',
+    },
+  ]);
+
+  assert.equal(injected.length, baseSlides.length);
+  assert.equal(injected[0].customMedia?.mode, 'video');
+  assert.equal(injected[0].customMedia?.url, 'blob:http://localhost:3000/funny-video-1');
+  assert.equal(injected[1].customMedia?.mode, 'photo');
+  assert.equal(injected[1].customMedia?.url, 'blob:http://localhost:3000/photo-2');
+  assert.equal(injected[2].customMedia?.url, 'blob:http://localhost:3000/funny-video-1');
+});
