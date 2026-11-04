@@ -15,17 +15,23 @@ import {
   TYPOGRAPHY_PAIRS,
 } from './data/initialTemplates';
 import {
+  ATMOSPHERE_PRESETS,
+  AtmospherePreset,
   calculateContrastRatio,
   deleteSlideFromDeck,
   duplicateSlideInDeck,
   getWcagComplianceLevel,
+  HEADLINE_ANIMATION_PRESETS,
+  HeadlineAnimationStyle,
   reorderSlideInDeck,
 } from './utils/deckEngine';
 import { SlideCanvas } from './components/SlideCanvas';
+import { ThreeStageShowcase } from './components/ThreeStageShowcase';
 import { TemplateGallery } from './components/TemplateGallery';
 import { BrandSystemBuilder } from './components/BrandSystemBuilder';
 import { PresentationModal } from './components/PresentationModal';
 import { ExportModal } from './components/ExportModal';
+import { AnimatedHeadline } from './components/AnimatedHeadline';
 import {
   Play,
   Plus,
@@ -38,6 +44,7 @@ import {
   FolderOpen,
   Layers,
   Palette,
+  Box,
 } from 'lucide-react';
 
 const LAYOUT_OPTIONS: { value: SlideLayoutType; label: string }[] = [
@@ -85,6 +92,14 @@ const SEED_SAVED_DECKS: SavedCustomDeck[] = [
 
 export default function App() {
   const [themes, setThemes] = useState<ThemePalette[]>(THEME_PALETTES);
+  const [activeAtmosphere, setActiveAtmosphere] = useState<AtmospherePreset>(
+    ATMOSPHERE_PRESETS[0]
+  );
+  const [show3DAnimation, setShow3DAnimation] = useState<boolean>(true);
+  const [enable3DCardTilt, setEnable3DCardTilt] = useState<boolean>(true);
+  const [headlineAnimation, setHeadlineAnimation] =
+    useState<HeadlineAnimationStyle>('kinetic-3d-wave');
+
   const [activeTemplateId, setActiveTemplateId] = useState<string>(
     INITIAL_TEMPLATES[0].id
   );
@@ -294,9 +309,12 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8F7F4] text-slate-900">
+    <div
+      className="min-h-screen flex flex-col text-slate-900 transition-colors duration-200"
+      style={{ backgroundImage: activeAtmosphere.pageBgCss }}
+    >
       {/* Strict 3-Zone Top Bar Contract */}
-      <header className="sticky top-0 z-30 bg-[#F8F7F4]/95 backdrop-blur-xs border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-8">
+      <header className="sticky top-0 z-30 bg-white/90 border-b border-slate-200/90 px-6 py-3.5 flex items-center justify-between gap-8">
         {/* Zone 1: Single text element wordmark */}
         <a
           href="#studio-workspace"
@@ -350,66 +368,176 @@ export default function App() {
       </header>
 
       <main className="flex-1">
-        {/* Section 01: Editorial Hero & Live Presentation Customizer Studio */}
-        <section id="studio-workspace" className="pt-8 pb-12 px-6">
+        {/* Section 01: Editorial Hero, Interactive 3D Animation Showcase & Live Studio */}
+        <section id="studio-workspace" className="scroll-mt-16 pt-8 pb-12 px-6">
           <div className="max-w-[1360px] mx-auto space-y-6">
-            {/* Compact Architectural Proposition & Primary Studio Bar */}
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-slate-200">
-              <div className="space-y-2 max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="font-semibold text-slate-800">
-                    01. Interactive Presentation Studio
-                  </span>
-                  <span aria-hidden="true">·</span>
-                  <span>Swiss 12-Column Grid Engine</span>
-                  <span aria-hidden="true">·</span>
-                  <span className="font-mono tabular-nums">
-                    Contrast {currentContrastRatio}:1 (WCAG {currentWcagLevel})
-                  </span>
+            {/* Hero Proposition Card with Luminous Atmosphere Mesh */}
+            <div
+              className="p-6 sm:p-8 border border-slate-200/90 bg-white/80 space-y-6"
+              style={{ backgroundImage: activeAtmosphere.heroMeshCss }}
+            >
+              <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                <div className="space-y-2.5 max-w-3xl">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                    <span className="font-semibold text-blue-700">
+                      01. Interactive 3D Presentation Studio
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>{activeAtmosphere.accentBadgeText}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="font-mono tabular-nums">
+                      Contrast {currentContrastRatio}:1 (WCAG {currentWcagLevel})
+                    </span>
+                  </div>
+                  <AnimatedHeadline
+                    as="h1"
+                    text="Design and Customize Institutional Presentation Systems with 3D Spatial Depth"
+                    animationStyle={headlineAnimation}
+                    primaryColorHex="#0F172A"
+                    accentColorHex={activeAtmosphere.threeKeyLightHex}
+                    className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 font-display leading-tight"
+                  />
                 </div>
-                <h1
-                  className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 font-display leading-tight"
-                  style={{ textWrap: 'balance' }}
-                >
-                  Design and Customize Institutional Presentation Systems with Mathematical Precision
-                </h1>
+
+                {/* Primary Studio & 3D Animation Action Bar */}
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShow3DAnimation((prev) => !prev)}
+                    aria-pressed={show3DAnimation}
+                    className={`px-3.5 py-2 text-xs font-medium border rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                      show3DAnimation
+                        ? 'bg-indigo-950 border-indigo-800 text-white'
+                        : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Box className="w-3.5 h-3.5" aria-hidden="true" />
+                    {show3DAnimation ? 'Hide 3D Animation' : 'Show 3D Animation'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowGridGuides((prev) => !prev)}
+                    aria-pressed={showGridGuides}
+                    className={`px-3.5 py-2 text-xs font-medium border rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                      showGridGuides
+                        ? 'bg-rose-50 border-rose-300 text-rose-900'
+                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Grid className="w-3.5 h-3.5" aria-hidden="true" />
+                    {showGridGuides ? 'Hide 12-Col Grid' : 'Show 12-Col Grid'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSaveCustomDeck(`${deckTitle}`)}
+                    className="px-3.5 py-2 text-xs font-medium bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 rounded-md transition-colors whitespace-nowrap shrink-0"
+                  >
+                    Save Snapshot
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsPresenting(true)}
+                    className="px-4 py-2 text-xs font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                  >
+                    <Play className="w-3.5 h-3.5" aria-hidden="true" />
+                    Present Deck
+                  </button>
+                </div>
               </div>
 
-              {/* Studio Action Controls */}
-              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowGridGuides((prev) => !prev)}
-                  aria-pressed={showGridGuides}
-                  className={`px-3.5 py-2 text-xs font-medium border rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                    showGridGuides
-                      ? 'bg-rose-50 border-rose-300 text-rose-900'
-                      : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <Grid className="w-3.5 h-3.5" aria-hidden="true" />
-                  {showGridGuides ? 'Hide 12-Col Grid' : 'Show 12-Col Grid'}
-                </button>
+              {/* Interactive Background Atmosphere & Headline Text Animation Switcher Strip */}
+              <div className="pt-4 border-t border-slate-200/80 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-700 mr-1">
+                      Canvas Atmosphere:
+                    </span>
+                    {ATMOSPHERE_PRESETS.map((atmo) => {
+                      const isSelected = atmo.id === activeAtmosphere.id;
+                      return (
+                        <button
+                          key={atmo.id}
+                          type="button"
+                          onClick={() => setActiveAtmosphere(atmo)}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors inline-flex items-center gap-2 whitespace-nowrap shrink-0 ${
+                            isSelected
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-white/90 text-slate-700 border-slate-300 hover:bg-white'
+                          }`}
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{
+                              background: `linear-gradient(135deg, ${atmo.threeKeyLightHex}, ${atmo.threeRimLightHex})`,
+                            }}
+                          />
+                          {atmo.name}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleSaveCustomDeck(`${deckTitle}`)
-                  }
-                  className="px-3.5 py-2 text-xs font-medium bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 rounded-md transition-colors whitespace-nowrap shrink-0"
-                >
-                  Save Snapshot
-                </button>
+                  <div className="text-xs font-mono text-slate-600 tabular-nums">
+                    Active Slide: {String(activeSlideIndex + 1).padStart(2, '0')} /{' '}
+                    {String(slides.length).padStart(2, '0')}
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsPresenting(true)}
-                  className="px-4 py-2 text-xs font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                >
-                  <Play className="w-3.5 h-3.5" aria-hidden="true" />
-                  Present Deck
-                </button>
+                {/* Headline Text Animation & Global 3D Motion Controls */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200/60">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-700 mr-1">
+                      Headline Text Animation:
+                    </span>
+                    {HEADLINE_ANIMATION_PRESETS.map((preset) => {
+                      const isSelected = preset.id === headlineAnimation;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => setHeadlineAnimation(preset.id)}
+                          aria-pressed={isSelected}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors whitespace-nowrap shrink-0 ${
+                            isSelected
+                              ? 'bg-blue-700 text-white border-blue-700'
+                              : 'bg-white/90 text-slate-700 border-slate-300 hover:bg-white'
+                          }`}
+                        >
+                          {preset.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setEnable3DCardTilt((prev) => !prev)}
+                    aria-pressed={enable3DCardTilt}
+                    className={`px-3 py-1.5 text-xs font-medium border rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                      enable3DCardTilt
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white/90 text-slate-700 border-slate-300 hover:bg-white'
+                    }`}
+                  >
+                    {enable3DCardTilt ? '3D Design Motion: Active' : 'Enable 3D Design Motion'}
+                  </button>
+                </div>
               </div>
+
+              {/* Interactive Three.js 3D Spatial Presentation Stage */}
+              {show3DAnimation && (
+                <ThreeStageShowcase
+                  deckTitle={deckTitle}
+                  slides={slides}
+                  activeSlideIndex={activeSlideIndex}
+                  theme={activeTheme}
+                  atmosphere={activeAtmosphere}
+                  onSelectSlideIndex={setActiveSlideIndex}
+                />
+              )}
             </div>
 
             {studioBannerNotice && (
@@ -433,7 +561,7 @@ export default function App() {
               {/* LEFT RAIL (3 Cols): Deck Metadata & Slide Filmstrip */}
               <aside
                 aria-label="Slide filmstrip and deck structure"
-                className="lg:col-span-3 bg-white border border-slate-200 p-4 space-y-4"
+                className="lg:col-span-3 bg-white/95 border border-slate-200 p-4 space-y-4"
               >
                 <div className="space-y-3 pb-3 border-b border-slate-200">
                   <div>
@@ -593,13 +721,13 @@ export default function App() {
               {/* CENTER STAGE (6 Cols): Live Slide Canvas & Layout Switcher */}
               <div className="lg:col-span-6 space-y-4">
                 {/* Canvas Toolbar */}
-                <div className="bg-white border border-slate-200 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
+                <div className="bg-white/95 border border-slate-200 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
                     <label
                       htmlFor="slide-layout-select"
                       className="text-xs font-medium text-slate-600 whitespace-nowrap"
                     >
-                      Master Layout:
+                      Layout:
                     </label>
                     <select
                       id="slide-layout-select"
@@ -611,7 +739,7 @@ export default function App() {
                           e.target.value as SlideLayoutType
                         )
                       }
-                      className="px-2.5 py-1.5 text-xs font-medium bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
+                      className="px-2 py-1.5 text-xs font-medium bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
                     >
                       {LAYOUT_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -626,7 +754,7 @@ export default function App() {
                       htmlFor="slide-artwork-select"
                       className="text-xs font-medium text-slate-600 whitespace-nowrap"
                     >
-                      Technical Figure:
+                      Figure:
                     </label>
                     <select
                       id="slide-artwork-select"
@@ -638,7 +766,7 @@ export default function App() {
                           e.target.value as VisualArtworkId
                         )
                       }
-                      className="px-2.5 py-1.5 text-xs font-medium bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
+                      className="px-2 py-1.5 text-xs font-medium bg-slate-50 border border-slate-300 rounded text-slate-900 focus:outline-none focus:border-blue-700"
                     >
                       {ARTWORK_OPTIONS.map((art) => (
                         <option key={art.value} value={art.value}>
@@ -646,25 +774,42 @@ export default function App() {
                         </option>
                       ))}
                     </select>
+
+                    <button
+                      type="button"
+                      onClick={() => setEnable3DCardTilt((prev) => !prev)}
+                      aria-pressed={enable3DCardTilt}
+                      className={`px-2.5 py-1.5 text-xs font-medium border rounded transition-colors whitespace-nowrap shrink-0 ${
+                        enable3DCardTilt
+                          ? 'bg-blue-700 text-white border-blue-700'
+                          : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      3D Tilt View
+                    </button>
                   </div>
                 </div>
 
-                {/* Interactive Slide Stage */}
-                <SlideCanvas
-                  slide={currentSlide}
-                  slideIndex={activeSlideIndex}
-                  totalSlides={slides.length}
-                  deckTitle={deckTitle}
-                  theme={activeTheme}
-                  typography={activeTypography}
-                  aspectRatio={aspectRatio}
-                  showGridGuides={showGridGuides}
-                  editable={true}
-                  onUpdateSlideField={handleUpdateSlideField}
-                />
+                {/* Interactive Slide Stage with 3D Perspective & Animated Headlines */}
+                <div className="preserve-3d">
+                  <SlideCanvas
+                    slide={currentSlide}
+                    slideIndex={activeSlideIndex}
+                    totalSlides={slides.length}
+                    deckTitle={deckTitle}
+                    theme={activeTheme}
+                    typography={activeTypography}
+                    aspectRatio={aspectRatio}
+                    showGridGuides={showGridGuides}
+                    editable={true}
+                    headlineAnimation={headlineAnimation}
+                    enable3DDesignMotion={enable3DCardTilt}
+                    onUpdateSlideField={handleUpdateSlideField}
+                  />
+                </div>
 
                 {/* Speaker Notes Bar Below Stage */}
-                <div className="bg-white border border-slate-200 p-4 space-y-1.5">
+                <div className="bg-white/95 border border-slate-200 p-4 space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <label
                       htmlFor="speaker-notes-textarea"
@@ -692,7 +837,7 @@ export default function App() {
               {/* RIGHT INSPECTOR (3 Cols): Content & Theme Token Inspector */}
               <aside
                 aria-label="Slide content and theme inspector"
-                className="lg:col-span-3 bg-white border border-slate-200 p-4 space-y-4"
+                className="lg:col-span-3 bg-white/95 border border-slate-200 p-4 space-y-4"
               >
                 {/* Segmented Inspector Mode Switch */}
                 <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-md">
@@ -965,6 +1110,8 @@ export default function App() {
           themes={themes}
           typographies={TYPOGRAPHY_PAIRS}
           activeTemplateId={activeTemplateId}
+          headlineAnimation={headlineAnimation}
+          enable3DDesignMotion={enable3DCardTilt}
           onSelectTemplateForStudio={handleLoadTemplateIntoStudio}
           onPreviewTemplateDeck={handlePreviewTemplateModal}
         />
@@ -975,6 +1122,8 @@ export default function App() {
           activeTheme={activeTheme}
           typographies={TYPOGRAPHY_PAIRS}
           activeTypography={activeTypography}
+          headlineAnimation={headlineAnimation}
+          enable3DDesignMotion={enable3DCardTilt}
           onSelectTheme={setActiveTheme}
           onSelectTypography={setActiveTypography}
           onCreateCustomTheme={handleCreateCustomTheme}
@@ -983,7 +1132,7 @@ export default function App() {
         {/* Section 04: Saved Custom Decks & Quantitative Proof */}
         <section
           id="saved-decks"
-          className="py-12 border-t border-slate-200/80 px-6"
+          className="scroll-mt-16 py-12 border-t border-slate-200/80 px-6"
         >
           <div className="max-w-[1360px] mx-auto space-y-10">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
@@ -991,12 +1140,14 @@ export default function App() {
                 <p className="text-xs font-medium text-slate-500">
                   04. Workspace Library & Institutional Benchmarks
                 </p>
-                <h2
+                <AnimatedHeadline
+                  as="h2"
+                  text="Saved Presentation Snapshots & Verified Client Outcomes"
+                  animationStyle={headlineAnimation}
+                  primaryColorHex="#0F172A"
+                  accentColorHex="#2563EB"
                   className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-display"
-                  style={{ textWrap: 'balance' }}
-                >
-                  Saved Presentation Snapshots & Verified Client Outcomes
-                </h2>
+                />
                 <p className="text-sm text-slate-600">
                   Resume customizing your saved presentation decks or export production-ready HTML and JSON specifications for board distribution.
                 </p>
@@ -1022,20 +1173,28 @@ export default function App() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {savedDecks.map((item) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 preserve-3d">
+                {savedDecks.map((item, idx) => (
                   <div
                     key={item.id}
-                    className="bg-white border border-slate-200 p-5 flex flex-col justify-between space-y-4"
+                    className={`bg-white/95 border border-slate-200 p-5 flex flex-col justify-between space-y-4 ${
+                      enable3DCardTilt ? 'animate-design-orbit-3d' : ''
+                    }`}
+                    style={{ animationDelay: `${idx * 200}ms` }}
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs text-slate-500 font-mono tabular-nums">
                         <span>{item.slides.length} Slides · {item.aspectRatio}</span>
                         <span>Saved {item.savedAt}</span>
                       </div>
-                      <h3 className="text-base font-bold text-slate-900 font-display">
-                        {item.name}
-                      </h3>
+                      <AnimatedHeadline
+                        as="h3"
+                        text={item.name}
+                        animationStyle={headlineAnimation}
+                        primaryColorHex="#0F172A"
+                        accentColorHex={item.theme.accentHex}
+                        className="text-base font-bold text-slate-900 font-display"
+                      />
                       <p className="text-xs text-slate-600">
                         Base Architecture: {item.sourceTemplateTitle} · Theme: {item.theme.name}
                       </p>
@@ -1066,8 +1225,12 @@ export default function App() {
             )}
 
             {/* Claim-to-Proof Adjacency: Quantitative Outcomes & Attributable Testimonials */}
-            <div className="pt-8 border-t border-slate-200 grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-white border border-slate-200 p-6 space-y-2">
+            <div className="pt-8 border-t border-slate-200 grid grid-cols-1 lg:grid-cols-3 gap-6 preserve-3d">
+              <div
+                className={`bg-white/95 border border-slate-200 p-6 space-y-2 ${
+                  enable3DCardTilt ? 'animate-headline-depth' : ''
+                }`}
+              >
                 <div className="text-xs text-slate-500">
                   Board Deck Preparation Velocity
                 </div>
@@ -1079,7 +1242,12 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="bg-white border border-slate-200 p-6 space-y-2">
+              <div
+                className={`bg-white/95 border border-slate-200 p-6 space-y-2 ${
+                  enable3DCardTilt ? 'animate-headline-depth' : ''
+                }`}
+                style={{ animationDelay: '150ms' }}
+              >
                 <div className="text-xs text-slate-500">
                   Accessibility & Legibility Audit
                 </div>
@@ -1091,7 +1259,12 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="bg-white border border-slate-200 p-6 flex flex-col justify-between space-y-3">
+              <div
+                className={`bg-white/95 border border-slate-200 p-6 flex flex-col justify-between space-y-3 ${
+                  enable3DCardTilt ? 'animate-headline-depth' : ''
+                }`}
+                style={{ animationDelay: '300ms' }}
+              >
                 <p className="text-xs text-slate-700 leading-relaxed italic">
                   "Before FolioDeck, our Zurich IR team spent four days reformatting quarterly EBITDA bridges from spreadsheets into slides. Standardized tabular templates cut deck assembly to 90 minutes with zero typographical drift."
                 </p>
@@ -1143,6 +1316,8 @@ export default function App() {
         theme={activeTheme}
         typography={activeTypography}
         aspectRatio={aspectRatio}
+        headlineAnimation={headlineAnimation}
+        enable3DDesignMotion={enable3DCardTilt}
         onClose={() => setIsPresenting(false)}
       />
 

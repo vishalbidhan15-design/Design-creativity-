@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ThemePalette, VisualArtworkId } from '../types/presentation';
+import { computeCard3DTiltTransform } from '../utils/deckEngine';
 
 interface SlideArtworkProps {
   artworkId: VisualArtworkId;
@@ -14,6 +15,7 @@ export const SlideArtwork: React.FC<SlideArtworkProps> = ({
   compact = false,
   className = 'w-full h-full',
 }) => {
+  const [tiltTransform, setTiltTransform] = useState<string | null>(null);
   const accent = theme.accentHex;
   const textPrimary = theme.textPrimaryHex;
   const textMuted = theme.textMutedHex;
@@ -21,18 +23,42 @@ export const SlideArtwork: React.FC<SlideArtworkProps> = ({
   const surface = theme.surfaceHex;
   const padClass = compact ? 'p-2.5' : 'p-3.5';
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const normY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+    setTiltTransform(computeCard3DTiltTransform(normX, normY, 9, 10));
+  };
+
+  const handleMouseLeave = () => {
+    setTiltTransform(null);
+  };
+
+  const wrapperClass = `relative overflow-hidden flex flex-col justify-between ${padClass} border transition-transform duration-150 ${
+    tiltTransform ? '' : 'animate-artwork-3d'
+  } ${className}`;
+
+  const wrapperStyle: React.CSSProperties = {
+    backgroundColor: surface,
+    borderColor: border,
+    ...(tiltTransform ? { transform: tiltTransform } : {}),
+  };
+
   if (artworkId === 'arch-pavilion') {
     return (
       <div
-        className={`relative overflow-hidden flex flex-col justify-between ${padClass} border ${className}`}
-        style={{ backgroundColor: surface, borderColor: border }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={wrapperClass}
+        style={wrapperStyle}
       >
         <div
           className="flex items-center justify-between gap-2 text-[10px] font-mono tracking-tight whitespace-nowrap"
           style={{ color: textMuted }}
         >
           <span className="truncate">ELEVATION A-04 · 1:200</span>
-          <span className="shrink-0">TIMBER SPAN</span>
+          <span className="shrink-0">3D TIMBER SPAN</span>
         </div>
         <svg
           viewBox="0 0 400 210"
@@ -98,8 +124,10 @@ export const SlideArtwork: React.FC<SlideArtworkProps> = ({
   if (artworkId === 'hardware-monolith') {
     return (
       <div
-        className={`relative overflow-hidden flex flex-col justify-between ${padClass} border ${className}`}
-        style={{ backgroundColor: surface, borderColor: border }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={wrapperClass}
+        style={wrapperStyle}
       >
         <div
           className="flex items-center justify-between gap-2 text-[10px] font-mono whitespace-nowrap"
@@ -149,8 +177,10 @@ export const SlideArtwork: React.FC<SlideArtworkProps> = ({
   if (artworkId === 'sustainable-grid') {
     return (
       <div
-        className={`relative overflow-hidden flex flex-col justify-between ${padClass} border ${className}`}
-        style={{ backgroundColor: surface, borderColor: border }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={wrapperClass}
+        style={wrapperStyle}
       >
         <div
           className="flex items-center justify-between gap-2 text-[10px] font-mono whitespace-nowrap"
@@ -207,8 +237,10 @@ export const SlideArtwork: React.FC<SlideArtworkProps> = ({
   if (artworkId === 'editorial-workspace') {
     return (
       <div
-        className={`relative overflow-hidden flex flex-col justify-between ${padClass} border ${className}`}
-        style={{ backgroundColor: surface, borderColor: border }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={wrapperClass}
+        style={wrapperStyle}
       >
         <div
           className="flex items-center justify-between gap-2 text-[10px] font-mono whitespace-nowrap"
@@ -246,8 +278,10 @@ export const SlideArtwork: React.FC<SlideArtworkProps> = ({
   if (artworkId === 'swiss-typography') {
     return (
       <div
-        className={`relative overflow-hidden flex flex-col justify-between ${padClass} border ${className}`}
-        style={{ backgroundColor: surface, borderColor: border }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={wrapperClass}
+        style={wrapperStyle}
       >
         <div
           className="flex items-center justify-between gap-2 text-[10px] font-mono whitespace-nowrap"
@@ -286,8 +320,10 @@ export const SlideArtwork: React.FC<SlideArtworkProps> = ({
 
   return (
     <div
-      className={`relative overflow-hidden flex flex-col justify-between ${padClass} border ${className}`}
-      style={{ backgroundColor: surface, borderColor: border }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={wrapperClass}
+      style={wrapperStyle}
     >
       <div
         className="flex items-center justify-between gap-2 text-[10px] font-mono whitespace-nowrap"

@@ -29,6 +29,115 @@
   }
 }
 
+@keyframes headlineWave3D {
+  0%, 100% {
+    transform: perspective(600px) translate3d(0, 0px, 0px) rotateX(0deg);
+  }
+  50% {
+    transform: perspective(600px) translate3d(0, -3px, 10px) rotateX(8deg);
+  }
+}
+
+@keyframes headlineFlip3D {
+  0% {
+    opacity: 0;
+    transform: perspective(700px) rotateX(-68deg) translate3d(0, 10px, -16px);
+  }
+  60% {
+    opacity: 1;
+    transform: perspective(700px) rotateX(8deg) translate3d(0, -2px, 8px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(700px) rotateX(0deg) translate3d(0, 0px, 0px);
+  }
+}
+
+@keyframes headlineShimmerSweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes headlineFloatDepth {
+  0%, 100% {
+    transform: perspective(800px) translate3d(0, 0px, 0px);
+  }
+  50% {
+    transform: perspective(800px) translate3d(0, -2.5px, 12px);
+  }
+}
+
+@keyframes designOrbit3D {
+  0%, 100% {
+    transform: perspective(1200px) rotateX(2.2deg) rotateY(-2.8deg) translate3d(0, 0px, 0px);
+  }
+  50% {
+    transform: perspective(1200px) rotateX(-1.8deg) rotateY(2.8deg) translate3d(0, -4px, 8px);
+  }
+}
+
+@keyframes artworkLayerFloat3D {
+  0%, 100% {
+    transform: perspective(900px) rotateX(4deg) rotateY(-5deg) translate3d(0, 0px, 6px);
+  }
+  50% {
+    transform: perspective(900px) rotateX(-3deg) rotateY(5deg) translate3d(0, -4px, 14px);
+  }
+}
+
+.animate-headline-wave-3d {
+  display: inline-block;
+  transform-style: preserve-3d;
+  animation: headlineWave3D 3.4s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  will-change: transform;
+}
+
+.animate-headline-flip-3d {
+  display: inline-block;
+  transform-style: preserve-3d;
+  animation: headlineFlip3D 0.85s cubic-bezier(0.16, 1, 0.3, 1) both,
+             headlineFloatDepth 4.2s ease-in-out 0.85s infinite;
+  will-change: transform, opacity;
+}
+
+.animate-headline-shimmer {
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: headlineShimmerSweep 4.5s ease-in-out infinite;
+}
+
+.animate-headline-depth {
+  display: inline-block;
+  transform-style: preserve-3d;
+  animation: headlineFloatDepth 3.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-design-orbit-3d {
+  transform-style: preserve-3d;
+  animation: designOrbit3D 6.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-artwork-3d {
+  transform-style: preserve-3d;
+  animation: artworkLayerFloat3D 5.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
@@ -37,3 +146,4 @@
     scroll-behavior: auto !important;
   }
 }
+

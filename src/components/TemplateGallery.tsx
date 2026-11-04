@@ -8,10 +8,13 @@ import {
 } from '../types/presentation';
 import {
   calculateContrastRatio,
+  computeCard3DTiltTransform,
   filterTemplates,
   getWcagComplianceLevel,
+  HeadlineAnimationStyle,
 } from '../utils/deckEngine';
 import { SlideCanvas } from './SlideCanvas';
+import { AnimatedHeadline } from './AnimatedHeadline';
 import { Search, SlidersHorizontal, ArrowUpRight, Eye } from 'lucide-react';
 
 interface TemplateGalleryProps {
@@ -19,6 +22,8 @@ interface TemplateGalleryProps {
   themes: ThemePalette[];
   typographies: TypographyPair[];
   activeTemplateId: string;
+  headlineAnimation?: HeadlineAnimationStyle;
+  enable3DDesignMotion?: boolean;
   onSelectTemplateForStudio: (template: TemplateDeck) => void;
   onPreviewTemplateDeck: (template: TemplateDeck) => void;
 }
@@ -36,6 +41,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   themes,
   typographies,
   activeTemplateId,
+  headlineAnimation = 'kinetic-3d-wave',
+  enable3DDesignMotion = true,
   onSelectTemplateForStudio,
   onPreviewTemplateDeck,
 }) => {
@@ -43,6 +50,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   const [selectedRatio, setSelectedRatio] = useState<AspectRatioFormat | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [slidePreviewIndexByDeck, setSlidePreviewIndexByDeck] = useState<Record<string, number>>({});
+  const [hoveredCardTilt, setHoveredCardTilt] = useState<Record<string, string>>({});
 
   const filteredTemplates = filterTemplates(
     templates,
@@ -58,7 +66,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   };
 
   return (
-    <section id="template-gallery" className="py-12 border-t border-slate-200/80">
+    <section id="template-gallery" className="scroll-mt-16 py-12 border-t border-slate-200/80">
       <div className="max-w-[1360px] mx-auto px-6 space-y-8">
         {/* Section Header */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
@@ -66,14 +74,16 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
             <p className="text-xs font-medium text-slate-500">
               02. Curated Presentation Architecture
             </p>
-            <h2
+            <AnimatedHeadline
+              as="h2"
+              text="Domain-Engineered Slide Systems Ready for Executive Customization"
+              animationStyle={headlineAnimation}
+              primaryColorHex="#0F172A"
+              accentColorHex="#2563EB"
               className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-display"
-              style={{ textWrap: 'balance' }}
-            >
-              Domain-Engineered Slide Systems Ready for Executive Customization
-            </h2>
+            />
             <p className="text-sm text-slate-600 leading-relaxed">
-              Every template is built on a 12-column mathematical grid with pre-audited WCAG AA/AAA contrast pairings, tabular financial matrices, and modular slide masters.
+              Every template is built on a 12-column mathematical grid with 3D spatial depth, pre-audited WCAG AA/AAA contrast pairings, tabular financial matrices, and modular slide masters.
             </p>
           </div>
 
@@ -176,11 +186,31 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               );
               const wcag = getWcagComplianceLevel(contrast);
               const isLoadedInStudio = tpl.id === activeTemplateId;
+              const cardTilt = hoveredCardTilt[tpl.id];
 
               return (
                 <article
                   key={tpl.id}
-                  className="bg-white border border-slate-200 flex flex-col justify-between p-6 space-y-5 transition-colors hover:border-slate-300"
+                  onMouseMove={(e) => {
+                    if (!enable3DDesignMotion) return;
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    if (!rect.width || !rect.height) return;
+                    const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                    const normY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+                    setHoveredCardTilt((prev) => ({
+                      ...prev,
+                      [tpl.id]: computeCard3DTiltTransform(normX, normY, 4, 6),
+                    }));
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredCardTilt((prev) => {
+                      const next = { ...prev };
+                      delete next[tpl.id];
+                      return next;
+                    });
+                  }}
+                  className="bg-white/95 border border-slate-200 flex flex-col justify-between p-6 space-y-5 transition-transform duration-150 hover:border-slate-300 preserve-3d"
+                  style={cardTilt ? { transform: cardTilt } : undefined}
                 >
                   <div className="space-y-4">
                     {/* Unboxed Clean Typographic Metadata Header */}
@@ -203,16 +233,21 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
 
                     {/* Title & Summary */}
                     <div className="space-y-1.5">
-                      <h3 className="text-xl font-bold text-slate-900 font-display tracking-tight">
-                        {tpl.title}
-                      </h3>
+                      <AnimatedHeadline
+                        as="h3"
+                        text={tpl.title}
+                        animationStyle={headlineAnimation}
+                        primaryColorHex="#0F172A"
+                        accentColorHex={tplTheme.accentHex}
+                        className="text-xl font-bold text-slate-900 font-display tracking-tight"
+                      />
                       <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                         {tpl.summary}
                       </p>
                     </div>
 
                     {/* Live Scaled Slide Preview Stage */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-2.5 preserve-3d">
                       <SlideCanvas
                         slide={previewSlide}
                         slideIndex={activeSlideIdx}
@@ -223,6 +258,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                         aspectRatio={tpl.aspectRatio}
                         editable={false}
                         compact={true}
+                        headlineAnimation={headlineAnimation}
+                        enable3DDesignMotion={enable3DDesignMotion}
                       />
 
                       {/* Interactive Slide Scrubber Tabs */}

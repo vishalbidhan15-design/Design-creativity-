@@ -5,6 +5,7 @@ import {
   ThemePalette,
   TypographyPair,
 } from '../types/presentation';
+import { HeadlineAnimationStyle } from '../utils/deckEngine';
 import { SlideCanvas } from './SlideCanvas';
 import { ChevronLeft, ChevronRight, X, FileText } from 'lucide-react';
 
@@ -16,6 +17,8 @@ interface PresentationModalProps {
   theme: ThemePalette;
   typography: TypographyPair;
   aspectRatio: AspectRatioFormat;
+  headlineAnimation?: HeadlineAnimationStyle;
+  enable3DDesignMotion?: boolean;
   onClose: () => void;
 }
 
@@ -27,6 +30,8 @@ export const PresentationModal: React.FC<PresentationModalProps> = ({
   theme,
   typography,
   aspectRatio,
+  headlineAnimation = 'kinetic-3d-wave',
+  enable3DDesignMotion = true,
   onClose,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialSlideIndex);
@@ -113,6 +118,8 @@ export const PresentationModal: React.FC<PresentationModalProps> = ({
             typography={typography}
             aspectRatio={aspectRatio}
             editable={false}
+            headlineAnimation={headlineAnimation}
+            enable3DDesignMotion={enable3DDesignMotion}
           />
         </div>
 

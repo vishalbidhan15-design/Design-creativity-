@@ -9,6 +9,11 @@ import {
   deleteSlideFromDeck,
   validateCustomBrandKit,
   generateCssTokens,
+  computeSlideLayerOffset,
+  ATMOSPHERE_PRESETS,
+  tokenizeHeadlineForAnimation,
+  computeCard3DTiltTransform,
+  HEADLINE_ANIMATION_PRESETS,
 } from './deckEngine';
 import { INITIAL_TEMPLATES, THEME_PALETTES, TYPOGRAPHY_PAIRS } from '../data/initialTemplates';
 
@@ -103,3 +108,30 @@ test('generateCssTokens outputs expected CSS custom properties', () => {
   assert.ok(css.includes('--deck-bg-canvas:'));
   assert.ok(css.includes('--deck-aspect-ratio: 16 / 9;'));
 });
+
+test('computeSlideLayerOffset and ATMOSPHERE_PRESETS compute valid 3D spatial coordinates', () => {
+  assert.ok(ATMOSPHERE_PRESETS.length >= 4);
+  const compactFront = computeSlideLayerOffset(2, 3, 0);
+  const explodedFront = computeSlideLayerOffset(2, 3, 1);
+  assert.ok(explodedFront.zOffset > compactFront.zOffset);
+  assert.ok(explodedFront.yOffset > compactFront.yOffset);
+  const middleLayer = computeSlideLayerOffset(1, 3, 1);
+  assert.equal(middleLayer.zOffset, 0);
+});
+
+test('tokenizeHeadlineForAnimation and computeCard3DTiltTransform produce deterministic 3D & kinetic tokens', () => {
+  assert.equal(HEADLINE_ANIMATION_PRESETS.length, 4);
+  const tokens = tokenizeHeadlineForAnimation('Autonomous Precision for +142% Throughput');
+  assert.equal(tokens.length, 5);
+  assert.equal(tokens[0].word, 'Autonomous');
+  assert.equal(tokens[0].delayMs, 0);
+  assert.equal(tokens[1].delayMs, 65);
+  assert.equal(tokens[3].isAccentWord, true); // +142%
+
+  const tiltCss = computeCard3DTiltTransform(0.5, -0.5, 8, 14);
+  assert.ok(tiltCss.includes('perspective(1100px)'));
+  assert.ok(tiltCss.includes('rotateX(4deg)'));
+  assert.ok(tiltCss.includes('rotateY(4deg)'));
+  assert.ok(tiltCss.includes('translateZ(14px)'));
+});
+

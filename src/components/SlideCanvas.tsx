@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   AspectRatioFormat,
   SlideData,
   ThemePalette,
   TypographyPair,
 } from '../types/presentation';
+import {
+  computeCard3DTiltTransform,
+  HeadlineAnimationStyle,
+} from '../utils/deckEngine';
 import { SlideArtwork } from './SlideArtwork';
+import { AnimatedHeadline } from './AnimatedHeadline';
 
 interface SlideCanvasProps {
   slide: SlideData;
@@ -18,6 +23,8 @@ interface SlideCanvasProps {
   showGridGuides?: boolean;
   editable?: boolean;
   compact?: boolean;
+  headlineAnimation?: HeadlineAnimationStyle;
+  enable3DDesignMotion?: boolean;
   onUpdateSlideField?: <K extends keyof SlideData>(field: K, value: SlideData[K]) => void;
 }
 
@@ -32,8 +39,12 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   showGridGuides = false,
   editable = false,
   compact = false,
+  headlineAnimation = 'kinetic-3d-wave',
+  enable3DDesignMotion = true,
   onUpdateSlideField,
 }) => {
+  const [pointerTiltCss, setPointerTiltCss] = useState<string | null>(null);
+
   const aspectClass =
     aspectRatio === '16:9'
       ? 'aspect-video'
@@ -59,15 +70,33 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
     ? 'text-base sm:text-lg'
     : 'text-lg sm:text-xl';
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!enable3DDesignMotion) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const normY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+    setPointerTiltCss(computeCard3DTiltTransform(normX, normY, compact ? 5 : 4, compact ? 6 : 8));
+  };
+
+  const handleMouseLeave = () => {
+    setPointerTiltCss(null);
+  };
+
   return (
     <div
       data-testid="active-slide-canvas"
-      className={`relative w-full ${aspectClass} border transition-colors duration-150 overflow-hidden flex flex-col justify-between ${containerPadding} select-none`}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={`relative w-full ${aspectClass} border transition-transform duration-150 overflow-hidden flex flex-col justify-between ${containerPadding} select-none ${
+        enable3DDesignMotion && !pointerTiltCss ? 'animate-design-orbit-3d' : 'preserve-3d'
+      }`}
       style={{
         backgroundColor: theme.backgroundHex,
         borderColor: theme.borderHex,
         color: theme.textPrimaryHex,
         fontFamily: typography.bodyFontFamilyCss,
+        ...(pointerTiltCss ? { transform: pointerTiltCss } : {}),
       }}
     >
       {/* Optional Swiss 12-Column & 5% Safe-Margin Architectural Grid Overlay */}
@@ -127,27 +156,19 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
       </header>
 
       {/* Main Slide Body per Layout Architecture */}
-      <div className="relative z-10 my-auto py-2 flex-1 flex flex-col justify-center min-h-0">
+      <div className="relative z-10 my-auto py-2 flex-1 flex flex-col justify-center min-h-0 preserve-3d">
         {slide.layout === 'cover-editorial' && (
-          <div className="grid grid-cols-12 gap-4 items-stretch h-full">
-            <div className="col-span-7 flex flex-col justify-center space-y-2">
-              {editable && onUpdateSlideField ? (
-                <textarea
-                  aria-label="Slide headline"
-                  rows={3}
-                  value={slide.headline}
-                  onChange={(e) => onUpdateSlideField('headline', e.target.value)}
-                  className={`w-full ${headlineSizeCover} font-bold tracking-tight leading-snug bg-transparent border border-transparent focus:border-current rounded px-1 py-0.5 resize-none focus:outline-none`}
-                  style={headingFontStyle}
-                />
-              ) : (
-                <h2
-                  className={`${headlineSizeCover} font-bold tracking-tight leading-snug`}
-                  style={{ ...headingFontStyle, textWrap: 'balance' }}
-                >
-                  {slide.headline}
-                </h2>
-              )}
+          <div className="grid grid-cols-12 gap-4 items-stretch h-full preserve-3d">
+            <div className="col-span-7 flex flex-col justify-center space-y-2 preserve-3d">
+              <AnimatedHeadline
+                as="h2"
+                text={slide.headline}
+                animationStyle={headlineAnimation}
+                primaryColorHex={theme.textPrimaryHex}
+                accentColorHex={theme.accentHex}
+                fontFamilyCss={typography.headingFontFamilyCss}
+                className={`${headlineSizeCover} font-bold tracking-tight leading-snug`}
+              />
 
               {editable && onUpdateSlideField ? (
                 <input
@@ -167,7 +188,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
               {editable && onUpdateSlideField ? (
                 <textarea
                   aria-label="Slide narrative body copy"
-                  rows={3}
+                  rows={2}
                   value={slide.bodyCopy}
                   onChange={(e) => onUpdateSlideField('bodyCopy', e.target.value)}
                   className="w-full text-[11px] sm:text-xs leading-relaxed bg-transparent border border-transparent focus:border-current rounded px-1 py-0.5 resize-none focus:outline-none"
@@ -183,7 +204,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
               )}
             </div>
 
-            <div className="col-span-5 flex flex-col justify-center">
+            <div className="col-span-5 flex flex-col justify-center preserve-3d">
               <SlideArtwork
                 artworkId={slide.artworkId}
                 theme={theme}
@@ -195,27 +216,33 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
         )}
 
         {slide.layout === 'kpi-grid' && (
-          <div className="space-y-3">
+          <div className="space-y-3 preserve-3d">
             <div className="max-w-3xl space-y-1">
-              <h2
+              <AnimatedHeadline
+                as="h2"
+                text={slide.headline}
+                animationStyle={headlineAnimation}
+                primaryColorHex={theme.textPrimaryHex}
+                accentColorHex={theme.accentHex}
+                fontFamilyCss={typography.headingFontFamilyCss}
                 className={`${headlineSizeStandard} font-bold tracking-tight leading-snug`}
-                style={{ ...headingFontStyle, textWrap: 'balance' }}
-              >
-                {slide.headline}
-              </h2>
+              />
               <p className="text-[11px] sm:text-xs line-clamp-2" style={{ color: theme.textMutedHex }}>
                 {slide.bodyCopy}
               </p>
             </div>
 
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-4 gap-2.5 preserve-3d">
               {slide.kpis.map((kpi, idx) => (
                 <div
                   key={kpi.id || idx}
-                  className="p-3 border flex flex-col justify-between"
+                  className={`p-3 border flex flex-col justify-between transition-transform duration-200 ${
+                    enable3DDesignMotion ? 'animate-headline-depth' : ''
+                  }`}
                   style={{
                     backgroundColor: theme.surfaceHex,
                     borderColor: theme.borderHex,
+                    animationDelay: `${idx * 140}ms`,
                   }}
                 >
                   <div className="text-[11px] font-medium truncate" style={{ color: theme.textMutedHex }}>
@@ -245,15 +272,18 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
         )}
 
         {slide.layout === 'split-narrative' && (
-          <div className="grid grid-cols-12 gap-4 items-stretch h-full">
-            <div className="col-span-6 flex flex-col justify-between space-y-2">
+          <div className="grid grid-cols-12 gap-4 items-stretch h-full preserve-3d">
+            <div className="col-span-6 flex flex-col justify-between space-y-2 preserve-3d">
               <div className="space-y-1.5">
-                <h2
+                <AnimatedHeadline
+                  as="h2"
+                  text={slide.headline}
+                  animationStyle={headlineAnimation}
+                  primaryColorHex={theme.textPrimaryHex}
+                  accentColorHex={theme.accentHex}
+                  fontFamilyCss={typography.headingFontFamilyCss}
                   className={`${headlineSizeStandard} font-bold tracking-tight leading-snug`}
-                  style={{ ...headingFontStyle, textWrap: 'balance' }}
-                >
-                  {slide.headline}
-                </h2>
+                />
                 <p className="text-xs font-medium" style={{ color: theme.accentHex }}>
                   {slide.subtitle}
                 </p>
@@ -270,8 +300,12 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                   className="grid grid-cols-2 gap-2.5 pt-2 border-t"
                   style={{ borderColor: theme.borderHex }}
                 >
-                  {slide.kpis.slice(0, 2).map((kpi) => (
-                    <div key={kpi.id}>
+                  {slide.kpis.slice(0, 2).map((kpi, idx) => (
+                    <div
+                      key={kpi.id}
+                      className={enable3DDesignMotion ? 'animate-headline-depth' : ''}
+                      style={{ animationDelay: `${idx * 180}ms` }}
+                    >
                       <div className="text-[10px] truncate" style={{ color: theme.textMutedHex }}>
                         {kpi.label}
                       </div>
@@ -290,7 +324,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
               )}
             </div>
 
-            <div className="col-span-6 flex flex-col justify-center">
+            <div className="col-span-6 flex flex-col justify-center preserve-3d">
               <SlideArtwork
                 artworkId={slide.artworkId}
                 theme={theme}
@@ -302,15 +336,18 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
         )}
 
         {slide.layout === 'financial-waterfall' && (
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 preserve-3d">
             <div className="flex items-end justify-between gap-2">
               <div>
-                <h2
+                <AnimatedHeadline
+                  as="h2"
+                  text={slide.headline}
+                  animationStyle={headlineAnimation}
+                  primaryColorHex={theme.textPrimaryHex}
+                  accentColorHex={theme.accentHex}
+                  fontFamilyCss={typography.headingFontFamilyCss}
                   className={`${headlineSizeStandard} font-bold tracking-tight`}
-                  style={{ ...headingFontStyle, textWrap: 'balance' }}
-                >
-                  {slide.headline}
-                </h2>
+                />
                 <p className="text-[11px] sm:text-xs" style={{ color: theme.textMutedHex }}>
                   {slide.subtitle}
                 </p>
@@ -334,15 +371,23 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
             </div>
 
             <div
-              className="grid grid-cols-6 gap-2.5 pt-4 pb-2 px-3 border items-end h-36"
+              className={`grid grid-cols-6 gap-2.5 pt-4 pb-2 px-3 border items-end h-36 ${
+                enable3DDesignMotion ? 'animate-artwork-3d' : ''
+              }`}
               style={{ backgroundColor: theme.surfaceHex, borderColor: theme.borderHex }}
             >
-              {slide.waterfallBars.map((bar) => {
+              {slide.waterfallBars.map((bar, idx) => {
                 const total = bar.primaryValue + bar.secondaryValue;
                 const primaryHeightPct = Math.round((bar.primaryValue / maxWaterfallValue) * 100);
                 const secondaryHeightPct = Math.round((bar.secondaryValue / maxWaterfallValue) * 100);
                 return (
-                  <div key={bar.id} className="h-full flex flex-col justify-end items-center gap-1">
+                  <div
+                    key={bar.id}
+                    className={`h-full flex flex-col justify-end items-center gap-1 ${
+                      enable3DDesignMotion ? 'animate-headline-depth' : ''
+                    }`}
+                    style={{ animationDelay: `${idx * 100}ms` }}
+                  >
                     <span className="text-[10px] font-mono font-semibold tabular-nums">
                       {bar.unitLabel}
                       {total.toFixed(1)}
@@ -377,27 +422,33 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
         )}
 
         {slide.layout === 'roadmap-timeline' && (
-          <div className="space-y-3">
+          <div className="space-y-3 preserve-3d">
             <div>
-              <h2
+              <AnimatedHeadline
+                as="h2"
+                text={slide.headline}
+                animationStyle={headlineAnimation}
+                primaryColorHex={theme.textPrimaryHex}
+                accentColorHex={theme.accentHex}
+                fontFamilyCss={typography.headingFontFamilyCss}
                 className={`${headlineSizeStandard} font-bold tracking-tight`}
-                style={{ ...headingFontStyle, textWrap: 'balance' }}
-              >
-                {slide.headline}
-              </h2>
+              />
               <p className="text-[11px] sm:text-xs" style={{ color: theme.textMutedHex }}>
                 {slide.bodyCopy}
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-2.5 preserve-3d">
               {slide.milestones.map((item, idx) => (
                 <div
                   key={item.id || idx}
-                  className="p-3 border flex flex-col justify-between space-y-2"
+                  className={`p-3 border flex flex-col justify-between space-y-2 ${
+                    enable3DDesignMotion ? 'animate-headline-depth' : ''
+                  }`}
                   style={{
                     backgroundColor: theme.surfaceHex,
                     borderColor: theme.borderHex,
+                    animationDelay: `${idx * 160}ms`,
                   }}
                 >
                   <div className="space-y-1">
@@ -431,20 +482,28 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
         )}
 
         {slide.layout === 'comparison-matrix' && (
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 preserve-3d">
             <div>
-              <h2
+              <AnimatedHeadline
+                as="h2"
+                text={slide.headline}
+                animationStyle={headlineAnimation}
+                primaryColorHex={theme.textPrimaryHex}
+                accentColorHex={theme.accentHex}
+                fontFamilyCss={typography.headingFontFamilyCss}
                 className={`${headlineSizeStandard} font-bold tracking-tight`}
-                style={{ ...headingFontStyle, textWrap: 'balance' }}
-              >
-                {slide.headline}
-              </h2>
+              />
               <p className="text-[11px] sm:text-xs" style={{ color: theme.textMutedHex }}>
                 {slide.subtitle}
               </p>
             </div>
 
-            <div className="border overflow-hidden" style={{ borderColor: theme.borderHex }}>
+            <div
+              className={`border overflow-hidden ${
+                enable3DDesignMotion ? 'animate-artwork-3d' : ''
+              }`}
+              style={{ borderColor: theme.borderHex }}
+            >
               <table className="w-full text-left border-collapse text-[11px]">
                 <thead>
                   <tr

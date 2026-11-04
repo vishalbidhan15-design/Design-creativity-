@@ -3,8 +3,10 @@ import { ThemePalette, TypographyPair } from '../types/presentation';
 import {
   calculateContrastRatio,
   getWcagComplianceLevel,
+  HeadlineAnimationStyle,
   validateCustomBrandKit,
 } from '../utils/deckEngine';
+import { AnimatedHeadline } from './AnimatedHeadline';
 import { Check, Plus } from 'lucide-react';
 
 interface BrandSystemBuilderProps {
@@ -12,6 +14,8 @@ interface BrandSystemBuilderProps {
   activeTheme: ThemePalette;
   typographies: TypographyPair[];
   activeTypography: TypographyPair;
+  headlineAnimation?: HeadlineAnimationStyle;
+  enable3DDesignMotion?: boolean;
   onSelectTheme: (theme: ThemePalette) => void;
   onSelectTypography: (typo: TypographyPair) => void;
   onCreateCustomTheme: (newTheme: ThemePalette) => void;
@@ -22,6 +26,8 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
   activeTheme,
   typographies,
   activeTypography,
+  headlineAnimation = 'kinetic-3d-wave',
+  enable3DDesignMotion = true,
   onSelectTheme,
   onSelectTypography,
   onCreateCustomTheme,
@@ -78,19 +84,21 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
   };
 
   return (
-    <section id="brand-systems" className="py-12 border-t border-slate-200/80 bg-white">
+    <section id="brand-systems" className="scroll-mt-16 py-12 border-t border-slate-200/80 bg-white/85">
       <div className="max-w-[1360px] mx-auto px-6 space-y-10">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <p className="text-xs font-medium text-slate-500">
               03. Brand Governance & Contrast Architecture
             </p>
-            <h2
+            <AnimatedHeadline
+              as="h2"
+              text="Color Token Calibration & Real-Time WCAG Legibility Gate"
+              animationStyle={headlineAnimation}
+              primaryColorHex="#0F172A"
+              accentColorHex="#2563EB"
               className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-display"
-              style={{ textWrap: 'balance' }}
-            >
-              Color Token Calibration & Real-Time WCAG Legibility Gate
-            </h2>
+            />
             <p className="text-sm text-slate-600 leading-relaxed">
               Test and apply architectural color systems and editorial font pairings across your entire slide deck. Every palette enforces strict 60-30-10 color allocation and minimum 4.5:1 text contrast.
             </p>
@@ -109,8 +117,8 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
               <h3 className="text-sm font-semibold text-slate-900">
                 Curated Presentation Palettes ({themes.length})
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {themes.map((palette) => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 preserve-3d">
+                {themes.map((palette, idx) => {
                   const isSelected = palette.id === activeTheme.id;
                   const ratio = calculateContrastRatio(
                     palette.textPrimaryHex,
@@ -122,11 +130,14 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
                       key={palette.id}
                       type="button"
                       onClick={() => onSelectTheme(palette)}
-                      className={`p-4 text-left border transition-colors flex flex-col justify-between gap-3 ${
+                      className={`p-4 text-left border transition-transform duration-150 flex flex-col justify-between gap-3 ${
+                        enable3DDesignMotion ? 'animate-headline-depth' : ''
+                      } ${
                         isSelected
                           ? 'border-blue-700 bg-blue-50/30'
                           : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
+                      style={{ animationDelay: `${idx * 120}ms` }}
                     >
                       <div className="flex items-center justify-between gap-2 w-full">
                         <span className="text-sm font-bold text-slate-900 truncate">
