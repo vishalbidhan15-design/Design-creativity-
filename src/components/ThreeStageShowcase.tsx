@@ -14,6 +14,7 @@ interface ThreeStageShowcaseProps {
   activeSlideIndex: number;
   theme: ThemePalette;
   atmosphere: AtmospherePreset;
+  isAdminMode?: boolean;
   onSelectSlideIndex?: (index: number) => void;
 }
 
@@ -251,6 +252,7 @@ export const ThreeStageShowcase: React.FC<ThreeStageShowcaseProps> = ({
   activeSlideIndex,
   theme,
   atmosphere,
+  isAdminMode = false,
 }) => {
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
   const [explosionPct, setExplosionPct] = useState<number>(55);
@@ -855,109 +857,112 @@ export const ThreeStageShowcase: React.FC<ThreeStageShowcaseProps> = ({
         </span>
       </div>
 
-      {/* Unified Collapsible Bottom Control Dock (Zero backdrop-filter over WebGL) */}
-      <div
-        className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 w-full max-w-[860px] px-3 flex flex-col items-center"
-      >
-        <button
-          type="button"
-          onClick={() => setIsDockCollapsed((prev) => !prev)}
-          className="px-3 py-1 text-[11px] font-mono text-slate-300 bg-slate-900 border border-b-0 border-slate-700 hover:text-white transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+      {/* Unified Collapsible Bottom Control Dock (Admin Only — Hidden in Visitor Showcase Mode) */}
+      {isAdminMode && (
+        <div
+          data-testid="three-stage-admin-controls"
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 w-full max-w-[860px] px-3 flex flex-col items-center"
         >
-          {isDockCollapsed ? (
-            <>
-              <ChevronUp className="w-3 h-3" aria-hidden="true" />
-              Show 3D Stage Controls
-            </>
-          ) : (
-            <>
-              <ChevronDown className="w-3 h-3" aria-hidden="true" />
-              Hide 3D Stage Controls
-            </>
+          <button
+            type="button"
+            onClick={() => setIsDockCollapsed((prev) => !prev)}
+            className="px-3 py-1 text-[11px] font-mono text-slate-300 bg-slate-900 border border-b-0 border-slate-700 hover:text-white transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+          >
+            {isDockCollapsed ? (
+              <>
+                <ChevronUp className="w-3 h-3" aria-hidden="true" />
+                Show 3D Stage Controls
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-3 h-3" aria-hidden="true" />
+                Hide 3D Stage Controls
+              </>
+            )}
+          </button>
+
+          {!isDockCollapsed && (
+            <div className="w-full bg-slate-900/95 border border-slate-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-200">
+              {/* Exploded View Depth Slider */}
+              <div className="flex items-center gap-2.5">
+                <label
+                  htmlFor="three-exploded-slider"
+                  className="text-[11px] font-medium text-slate-300 whitespace-nowrap"
+                >
+                  3D Layer Cascade:
+                </label>
+                <input
+                  id="three-exploded-slider"
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={explosionPct}
+                  onChange={(e) => setExplosionPct(Number(e.target.value))}
+                  className="w-24 sm:w-28 accent-blue-500 cursor-pointer"
+                />
+                <span className="font-mono text-[11px] tabular-nums text-sky-400 w-9">
+                  {explosionPct}%
+                </span>
+              </div>
+
+              {/* Camera Angle Presets */}
+              <div className="flex items-center gap-1">
+                {(Object.keys(CAMERA_PRESETS) as CameraPresetId[]).map((key) => {
+                  const active = cameraPreset === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setCameraPreset(key)}
+                      className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
+                        active
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      {CAMERA_PRESETS[key].label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Motion Play / Pause & Reset */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsPlaying((prev) => !prev)}
+                  className="px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-white rounded transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                >
+                  {isPlaying ? (
+                    <>
+                      <Pause className="w-3 h-3" aria-hidden="true" />
+                      Pause 3D
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3 h-3" aria-hidden="true" />
+                      Play 3D
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  aria-label="Reset 3D view"
+                  onClick={() => {
+                    setExplosionPct(55);
+                    setCameraPreset('isometric');
+                    setIsPlaying(true);
+                  }}
+                  className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
           )}
-        </button>
-
-        {!isDockCollapsed && (
-          <div className="w-full bg-slate-900/95 border border-slate-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-200">
-            {/* Exploded View Depth Slider */}
-            <div className="flex items-center gap-2.5">
-              <label
-                htmlFor="three-exploded-slider"
-                className="text-[11px] font-medium text-slate-300 whitespace-nowrap"
-              >
-                3D Layer Cascade:
-              </label>
-              <input
-                id="three-exploded-slider"
-                type="range"
-                min={0}
-                max={100}
-                value={explosionPct}
-                onChange={(e) => setExplosionPct(Number(e.target.value))}
-                className="w-24 sm:w-28 accent-blue-500 cursor-pointer"
-              />
-              <span className="font-mono text-[11px] tabular-nums text-sky-400 w-9">
-                {explosionPct}%
-              </span>
-            </div>
-
-            {/* Camera Angle Presets */}
-            <div className="flex items-center gap-1">
-              {(Object.keys(CAMERA_PRESETS) as CameraPresetId[]).map((key) => {
-                const active = cameraPreset === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setCameraPreset(key)}
-                    className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
-                      active
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                    }`}
-                  >
-                    {CAMERA_PRESETS[key].label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Motion Play / Pause & Reset */}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setIsPlaying((prev) => !prev)}
-                className="px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-white rounded transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
-              >
-                {isPlaying ? (
-                  <>
-                    <Pause className="w-3 h-3" aria-hidden="true" />
-                    Pause 3D
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-3 h-3" aria-hidden="true" />
-                    Play 3D
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                aria-label="Reset 3D view"
-                onClick={() => {
-                  setExplosionPct(55);
-                  setCameraPreset('isometric');
-                  setIsPlaying(true);
-                }}
-                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -281,46 +281,50 @@ export const SlideMediaFrame: React.FC<SlideMediaFrameProps> = ({
           )}
         </div>
 
-        {/* Top-Right Interactive Controls Overlay */}
-        <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5">
-          {media.mode === 'video' && (
-            <button
-              type="button"
-              onClick={togglePlayPause}
-              aria-label={isPlaying ? 'Pause slide video' : 'Play slide video'}
-              className="px-2 py-1 text-[10px] font-mono font-medium bg-black/65 hover:bg-black/80 text-white border border-white/15 rounded inline-flex items-center gap-1 whitespace-nowrap"
-            >
-              {isPlaying ? (
-                <>
-                  <Pause className="w-2.5 h-2.5" aria-hidden="true" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play className="w-2.5 h-2.5" aria-hidden="true" />
-                  Play
-                </>
-              )}
-            </button>
-          )}
+        {/* Top-Right Interactive Controls Overlay (Admin Editable Mode Only) */}
+        {editable && (
+          <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5">
+            {media.mode === 'video' && (
+              <button
+                type="button"
+                onClick={togglePlayPause}
+                aria-label={isPlaying ? 'Pause slide video' : 'Play slide video'}
+                className="px-2 py-1 text-[10px] font-mono font-medium bg-black/65 hover:bg-black/80 text-white border border-white/15 rounded inline-flex items-center gap-1 whitespace-nowrap"
+              >
+                {isPlaying ? (
+                  <>
+                    <Pause className="w-2.5 h-2.5" aria-hidden="true" />
+                    Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-2.5 h-2.5" aria-hidden="true" />
+                    Play
+                  </>
+                )}
+              </button>
+            )}
 
-          {editable && onUpdateMedia && !compact && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-2.5 py-1 text-[10px] font-medium bg-blue-600/90 hover:bg-blue-700 text-white rounded inline-flex items-center gap-1 whitespace-nowrap shadow-xs"
-            >
-              <Upload className="w-2.5 h-2.5" aria-hidden="true" />
-              Upload Photo / Video
-            </button>
-          )}
-        </div>
+            {onUpdateMedia && !compact && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2.5 py-1 text-[10px] font-medium bg-blue-600/90 hover:bg-blue-700 text-white rounded inline-flex items-center gap-1 whitespace-nowrap shadow-xs"
+              >
+                <Upload className="w-2.5 h-2.5" aria-hidden="true" />
+                Upload Photo / Video
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Measured Contrast Scrim with Caption Overlay */}
         <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 py-2 flex items-center justify-between gap-2 text-white">
           <span className="text-[10px] font-mono truncate">{media.caption}</span>
           <span className="text-[10px] font-mono text-sky-300 shrink-0 uppercase">
-            {media.mode === 'video' ? 'VIDEO' : 'PHOTO'} · {media.brightness}%B / {media.contrast}%C
+            {editable
+              ? `${media.mode === 'video' ? 'VIDEO' : 'PHOTO'} · ${media.brightness}%B / ${media.contrast}%C`
+              : `${media.mode === 'video' ? '3D LIVE VIDEO SLOT' : '3D PHOTO SLOT'} · AUTO 3D TILT & ZOOM`}
           </span>
         </div>
       </div>

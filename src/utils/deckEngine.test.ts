@@ -20,6 +20,8 @@ import {
   buildMediaTransformCss,
   isAdminModeFromSearch,
   injectVisitorMediaIntoSlides,
+  injectVisitorSlotMediaIntoSlides,
+  PREDEFINED_MEDIA_SLOTS,
 } from './deckEngine';
 import { INITIAL_TEMPLATES, THEME_PALETTES, TYPOGRAPHY_PAIRS } from '../data/initialTemplates';
 
@@ -204,4 +206,15 @@ test('isAdminModeFromSearch and injectVisitorMediaIntoSlides support Visitor Sho
   assert.equal(injected[1].customMedia?.mode, 'photo');
   assert.equal(injected[1].customMedia?.url, 'blob:http://localhost:3000/photo-2');
   assert.equal(injected[2].customMedia?.url, 'blob:http://localhost:3000/funny-video-1');
+
+  assert.equal(PREDEFINED_MEDIA_SLOTS.length, 3);
+  const slotInjected = injectVisitorSlotMediaIntoSlides(baseSlides, 1, {
+    id: 'slot-asset-2',
+    type: 'video',
+    url: 'blob:http://localhost:3000/slot-2-video',
+    name: 'Slot 2 Clip',
+  });
+  assert.equal(slotInjected[1].customMedia?.url, 'blob:http://localhost:3000/slot-2-video');
+  assert.equal(slotInjected[4].customMedia?.url, 'blob:http://localhost:3000/slot-2-video');
 });
+

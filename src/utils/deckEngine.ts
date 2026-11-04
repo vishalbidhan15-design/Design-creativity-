@@ -654,6 +654,74 @@ export interface VisitorUploadedAsset {
   url: string;
 }
 
+export interface PredefinedMediaSlot {
+  slotIndex: number;
+  id: string;
+  label: string;
+  targetDescription: string;
+  slideIndices: number[];
+}
+
+export const PREDEFINED_MEDIA_SLOTS: PredefinedMediaSlot[] = [
+  {
+    slotIndex: 0,
+    id: 'slot-01-hero',
+    label: 'Slot 01 · Hero Keynote Frame',
+    targetDescription: 'Injects into Slide 01 & Slide 04 with 3D Depth Tilt + Dynamic Zoom',
+    slideIndices: [0, 3],
+  },
+  {
+    slotIndex: 1,
+    id: 'slot-02-narrative',
+    label: 'Slot 02 · Feature Narrative Frame',
+    targetDescription: 'Injects into Slide 02 & Slide 05 with Floating 3D Motion',
+    slideIndices: [1, 4],
+  },
+  {
+    slotIndex: 2,
+    id: 'slot-03-showreel',
+    label: 'Slot 03 · Spotlight Showreel Frame',
+    targetDescription: 'Injects into Slide 03 & Slide 06 with Aurora Spatial Glow',
+    slideIndices: [2, 5],
+  },
+];
+
+export function injectVisitorSlotMediaIntoSlides(
+  slides: SlideData[],
+  slotIndex: number,
+  asset: VisitorUploadedAsset
+): SlideData[] {
+  const normalizedSlot = Math.max(0, Math.min(2, slotIndex));
+  return slides.map((slide, index) => {
+    if (index % 3 !== normalizedSlot) return slide;
+    const supportsMediaPlaceholder =
+      slide.layout === 'cover-editorial' ||
+      slide.layout === 'split-narrative' ||
+      slide.layout === 'media-showcase';
+
+    return {
+      ...slide,
+      layout: supportsMediaPlaceholder ? slide.layout : 'media-showcase',
+      customMedia: {
+        ...DEFAULT_SLIDE_MEDIA_CONFIG,
+        ...(slide.customMedia || {}),
+        mode: asset.type,
+        url: asset.url,
+        caption: `Slot 0${normalizedSlot + 1} · ${asset.name}`,
+        brightness: 104,
+        contrast: 108,
+        saturation: 112,
+        zoom: 1.08,
+        borderRadiusPx: 6,
+        videoAutoplay: true,
+        videoLoop: true,
+        videoMuted: true,
+        videoPlaybackRate: 1,
+      },
+    };
+  });
+}
+
 export function injectVisitorMediaIntoSlides(
   slides: SlideData[],
   assets: VisitorUploadedAsset[]
@@ -691,7 +759,4 @@ export function injectVisitorMediaIntoSlides(
     };
   });
 }
-
-
-
 

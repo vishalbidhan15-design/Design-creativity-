@@ -24,6 +24,7 @@ interface TemplateGalleryProps {
   activeTemplateId: string;
   headlineAnimation?: HeadlineAnimationStyle;
   enable3DDesignMotion?: boolean;
+  isAdminMode?: boolean;
   onSelectTemplateForStudio: (template: TemplateDeck) => void;
   onOpenTemplateMediaEditor: (template: TemplateDeck) => void;
   onPreviewTemplateDeck: (template: TemplateDeck) => void;
@@ -46,6 +47,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   activeTemplateId,
   headlineAnimation = 'kinetic-3d-wave',
   enable3DDesignMotion = true,
+  isAdminMode = false,
   onSelectTemplateForStudio,
   onOpenTemplateMediaEditor,
   onPreviewTemplateDeck,
@@ -317,14 +319,16 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                         Preview
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => onOpenTemplateMediaEditor(tpl)}
-                        className="px-3 py-1.5 text-xs font-medium text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                      >
-                        <Film className="w-3.5 h-3.5" aria-hidden="true" />
-                        Edit Photo / Video
-                      </button>
+                      {isAdminMode && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenTemplateMediaEditor(tpl)}
+                          className="px-3 py-1.5 text-xs font-medium text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                        >
+                          <Film className="w-3.5 h-3.5" aria-hidden="true" />
+                          Edit Photo / Video
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -335,7 +339,13 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                             : 'bg-slate-900 text-white hover:bg-slate-800'
                         }`}
                       >
-                        {isLoadedInStudio ? 'Active in Studio' : 'Use Template'}
+                        {isLoadedInStudio
+                          ? isAdminMode
+                            ? 'Active in Studio'
+                            : 'Active in Showcase'
+                          : isAdminMode
+                            ? 'Use Template'
+                            : 'Load in 3D Showcase'}
                         <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                     </div>
