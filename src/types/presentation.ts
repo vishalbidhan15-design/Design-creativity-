@@ -4,7 +4,8 @@ export type SlideLayoutType =
   | 'split-narrative'
   | 'financial-waterfall'
   | 'roadmap-timeline'
-  | 'comparison-matrix';
+  | 'comparison-matrix'
+  | 'media-showcase';
 
 export type VisualArtworkId =
   | 'arch-pavilion'
@@ -21,7 +22,31 @@ export type TemplateCategory =
   | 'Pitch & Venture'
   | 'Financial & Board'
   | 'Product & Roadmap'
-  | 'Architecture & Brand';
+  | 'Architecture & Brand'
+  | 'Media & Video Showreel'
+  | 'Marketing & Launch';
+
+export type SlideMediaMode = 'artwork' | 'photo' | 'video';
+
+export interface SlideMediaConfig {
+  mode: SlideMediaMode;
+  url: string;
+  caption: string;
+  objectFit: 'cover' | 'contain';
+  brightness: number; // 50 to 150 (%)
+  contrast: number; // 50 to 150 (%)
+  saturation: number; // 0 to 200 (%)
+  sepia: number; // 0 to 100 (%)
+  blurPx: number; // 0 to 12 (px)
+  zoom: number; // 1 to 1.8
+  panX: number; // -40 to 40 (%)
+  panY: number; // -40 to 40 (%)
+  borderRadiusPx: number; // 0 to 24 (px)
+  videoAutoplay: boolean;
+  videoLoop: boolean;
+  videoMuted: boolean;
+  videoPlaybackRate: number; // 0.5 to 2.0
+}
 
 export interface SlideKpiItem {
   id: string;
@@ -66,6 +91,7 @@ export interface SlideData {
   footnote: string;
   speakerNotes: string;
   artworkId: VisualArtworkId;
+  customMedia?: SlideMediaConfig;
   kpis: SlideKpiItem[];
   waterfallBars: WaterfallBarItem[];
   milestones: RoadmapMilestone[];

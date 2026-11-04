@@ -89,7 +89,7 @@ export const BrandSystemBuilder: React.FC<BrandSystemBuilderProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <p className="text-xs font-medium text-slate-500">
-              03. Brand Governance & Contrast Architecture
+              04. Brand Governance & Contrast Architecture
             </p>
             <AnimatedHeadline
               as="h2"

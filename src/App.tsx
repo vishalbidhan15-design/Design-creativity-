@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   AspectRatioFormat,
   SavedCustomDeck,
   SlideData,
   SlideLayoutType,
+  SlideMediaConfig,
+  SlideMediaMode,
   TemplateDeck,
   ThemePalette,
   TypographyPair,
@@ -18,16 +20,20 @@ import {
   ATMOSPHERE_PRESETS,
   AtmospherePreset,
   calculateContrastRatio,
+  DEFAULT_SLIDE_MEDIA_CONFIG,
   deleteSlideFromDeck,
   duplicateSlideInDeck,
   getWcagComplianceLevel,
   HEADLINE_ANIMATION_PRESETS,
   HeadlineAnimationStyle,
+  MEDIA_FILTER_PRESETS,
   reorderSlideInDeck,
+  SAMPLE_MEDIA_ASSETS,
 } from './utils/deckEngine';
 import { SlideCanvas } from './components/SlideCanvas';
 import { ThreeStageShowcase } from './components/ThreeStageShowcase';
 import { TemplateGallery } from './components/TemplateGallery';
+import { MediaStudioSection } from './components/MediaStudioSection';
 import { BrandSystemBuilder } from './components/BrandSystemBuilder';
 import { PresentationModal } from './components/PresentationModal';
 import { ExportModal } from './components/ExportModal';
@@ -45,6 +51,8 @@ import {
   Layers,
   Palette,
   Box,
+  Film,
+  Upload,
 } from 'lucide-react';
 
 const LAYOUT_OPTIONS: { value: SlideLayoutType; label: string }[] = [
@@ -54,6 +62,7 @@ const LAYOUT_OPTIONS: { value: SlideLayoutType; label: string }[] = [
   { value: 'financial-waterfall', label: '04. Financial Waterfall' },
   { value: 'roadmap-timeline', label: '05. Strategic Roadmap' },
   { value: 'comparison-matrix', label: '06. Benchmark Matrix' },
+  { value: 'media-showcase', label: '07. Photo & Video Showcase' },
 ];
 
 const ARTWORK_OPTIONS: { value: VisualArtworkId; label: string }[] = [
@@ -91,6 +100,7 @@ const SEED_SAVED_DECKS: SavedCustomDeck[] = [
 ];
 
 export default function App() {
+  const studioMediaInputRef = useRef<HTMLInputElement | null>(null);
   const [themes, setThemes] = useState<ThemePalette[]>(THEME_PALETTES);
   const [activeAtmosphere, setActiveAtmosphere] = useState<AtmospherePreset>(
     ATMOSPHERE_PRESETS[0]
@@ -120,9 +130,9 @@ export default function App() {
     TYPOGRAPHY_PAIRS[0]
   );
   const [showGridGuides, setShowGridGuides] = useState<boolean>(false);
-  const [inspectorTab, setInspectorTab] = useState<'content' | 'theme'>(
-    'content'
-  );
+  const [inspectorTab, setInspectorTab] = useState<
+    'content' | 'media' | 'theme'
+  >('content');
   const [isPresenting, setIsPresenting] = useState<boolean>(false);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [studioBannerNotice, setStudioBannerNotice] = useState<string | null>(
@@ -151,6 +161,9 @@ export default function App() {
   }, [savedDecks]);
 
   const currentSlide = slides[activeSlideIndex] || slides[0];
+  const currentMedia: SlideMediaConfig = currentSlide.customMedia || {
+    ...DEFAULT_SLIDE_MEDIA_CONFIG,
+  };
   const currentContrastRatio = calculateContrastRatio(
     activeTheme.textPrimaryHex,
     activeTheme.backgroundHex
@@ -161,7 +174,7 @@ export default function App() {
     setStudioBannerNotice(msg);
     setTimeout(() => {
       setStudioBannerNotice((prev) => (prev === msg ? null : prev));
-    }, 3500);
+    }, 3800);
   };
 
   const handleLoadTemplateIntoStudio = (tpl: TemplateDeck) => {
@@ -177,7 +190,52 @@ export default function App() {
       TYPOGRAPHY_PAIRS[0];
     setActiveTheme(matchedTheme);
     setActiveTypography(matchedTypo);
-    triggerNotice(`Loaded "${tpl.title}" (${tpl.slides.length} slides) into Studio.`);
+    triggerNotice(
+      `Loaded "${tpl.title}" (${tpl.slides.length} slides) into Studio.`
+    );
+    const studioEl = document.getElementById('studio-workspace');
+    if (studioEl) {
+      studioEl.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleOpenTemplateMediaEditor = (tpl: TemplateDeck) => {
+    setActiveTemplateId(tpl.id);
+    setDeckTitle(tpl.title);
+    setAspectRatio(tpl.aspectRatio);
+    const clonedSlides: SlideData[] = JSON.parse(JSON.stringify(tpl.slides));
+    // Ensure first slide has photo/video media enabled so the user can immediately edit photo/video
+    if (clonedSlides.length > 0) {
+      const first = clonedSlides[0];
+      if (!first.customMedia || first.customMedia.mode === 'artwork') {
+        first.customMedia = {
+          ...DEFAULT_SLIDE_MEDIA_CONFIG,
+          mode: 'video',
+          url: 'procedural://cinema-prism',
+          caption: `${tpl.title} · Custom Studio Video & Photo Layer`,
+        };
+      }
+      if (
+        first.layout !== 'media-showcase' &&
+        first.layout !== 'cover-editorial' &&
+        first.layout !== 'split-narrative'
+      ) {
+        first.layout = 'media-showcase';
+      }
+    }
+    setSlides(clonedSlides);
+    setActiveSlideIndex(0);
+    const matchedTheme =
+      themes.find((t) => t.id === tpl.defaultThemeId) || themes[0];
+    const matchedTypo =
+      TYPOGRAPHY_PAIRS.find((tp) => tp.id === tpl.defaultTypographyId) ||
+      TYPOGRAPHY_PAIRS[0];
+    setActiveTheme(matchedTheme);
+    setActiveTypography(matchedTypo);
+    setInspectorTab('media');
+    triggerNotice(
+      `Opened "${tpl.title}" in Photo & Video Editor — upload or customize your video & photo on the right panel.`
+    );
     const studioEl = document.getElementById('studio-workspace');
     if (studioEl) {
       studioEl.scrollIntoView({ behavior: 'smooth' });
@@ -200,19 +258,76 @@ export default function App() {
     );
   };
 
+  const handleUpdateSlideMedia = (patch: Partial<SlideMediaConfig>) => {
+    setSlides((prev) =>
+      prev.map((s, idx) => {
+        if (idx !== activeSlideIndex) return s;
+        const base = s.customMedia || { ...DEFAULT_SLIDE_MEDIA_CONFIG };
+        const updatedMedia: SlideMediaConfig = { ...base, ...patch };
+        // Ensure the layout shows the media frame if user enables photo or video on a chart-only layout
+        const nextLayout =
+          updatedMedia.mode !== 'artwork' &&
+          s.layout !== 'cover-editorial' &&
+          s.layout !== 'split-narrative' &&
+          s.layout !== 'media-showcase'
+            ? 'media-showcase'
+            : s.layout;
+        return {
+          ...s,
+          layout: nextLayout,
+          customMedia: updatedMedia,
+        };
+      })
+    );
+  };
+
+  const handleStudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isVideo = file.type.startsWith('video/');
+    const objectUrl = URL.createObjectURL(file);
+    handleUpdateSlideMedia({
+      mode: isVideo ? 'video' : 'photo',
+      url: objectUrl,
+      caption: `${file.name} · Custom ${isVideo ? 'Video' : 'Photo'}`,
+    });
+    setInspectorTab('media');
+    triggerNotice(
+      `Uploaded ${isVideo ? 'video' : 'photo'} "${file.name}" onto Slide ${
+        activeSlideIndex + 1
+      }.`
+    );
+  };
+
+  const handleApplyLabMediaToActiveSlide = (mediaConfig: SlideMediaConfig) => {
+    handleUpdateSlideMedia(mediaConfig);
+    setInspectorTab('media');
+    triggerNotice(
+      `Applied graded ${mediaConfig.mode} "${mediaConfig.caption}" to Slide ${
+        activeSlideIndex + 1
+      }.`
+    );
+  };
+
   const handleAddBlankSlide = () => {
     const newSlideNumber = slides.length + 1;
     const newSlide: SlideData = {
       id: `slide-custom-${Date.now()}`,
-      layout: 'split-narrative',
-      sectionKicker: `${String(newSlideNumber).padStart(2, '0')}. Strategic Module`,
-      headline: 'New Architectural Narrative & Key Deliverables',
-      subtitle: 'Executive Summary · Key Operational Metrics',
+      layout: 'media-showcase',
+      sectionKicker: `${String(newSlideNumber).padStart(2, '0')}. Custom Media Module`,
+      headline: 'Custom Photo & Video Narrative Showcase',
+      subtitle: 'Executive Summary · Interactive Media & Key Metrics',
       bodyCopy:
-        'Click directly on any text block on the slide canvas or use the right inspector panel to customize narrative copy, layout geometry, and tabular metrics.',
+        'Upload your own video or photo or customize any text block directly on the slide canvas.',
       footnote: `${deckTitle} · Verified Specification`,
-      speakerNotes: 'Introduce the core objective and key metrics for this section.',
+      speakerNotes: 'Introduce the core objective and key visual media for this section.',
       artworkId: 'arch-pavilion',
+      customMedia: {
+        ...DEFAULT_SLIDE_MEDIA_CONFIG,
+        mode: 'photo',
+        url: SAMPLE_MEDIA_ASSETS[0].url,
+        caption: SAMPLE_MEDIA_ASSETS[0].caption,
+      },
       kpis: [
         {
           id: `kpi-${Date.now()}-1`,
@@ -323,10 +438,10 @@ export default function App() {
           FolioDeck
         </a>
 
-        {/* Zone 2: 4 concise single-line navigation links */}
+        {/* Zone 2: 5 concise single-line navigation links */}
         <nav
           aria-label="Primary navigation"
-          className="hidden md:flex items-center gap-7 text-xs font-medium text-slate-600"
+          className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-600"
         >
           <a
             href="#studio-workspace"
@@ -338,7 +453,13 @@ export default function App() {
             href="#template-gallery"
             className="hover:text-slate-900 hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
           >
-            Template Gallery
+            Template Gallery ({INITIAL_TEMPLATES.length})
+          </a>
+          <a
+            href="#media-studio-lab"
+            className="hover:text-slate-900 hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
+          >
+            Photo & Video Lab
           </a>
           <a
             href="#brand-systems"
@@ -380,7 +501,7 @@ export default function App() {
                 <div className="space-y-2.5 max-w-3xl">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                     <span className="font-semibold text-blue-700">
-                      01. Interactive 3D Presentation Studio
+                      01. Interactive 3D Presentation & Media Studio
                     </span>
                     <span aria-hidden="true">·</span>
                     <span>{activeAtmosphere.accentBadgeText}</span>
@@ -401,6 +522,22 @@ export default function App() {
 
                 {/* Primary Studio & 3D Animation Action Bar */}
                 <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <input
+                    ref={studioMediaInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={handleStudioFileUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => studioMediaInputRef.current?.click()}
+                    className="px-3.5 py-2 text-xs font-medium bg-white border border-blue-300 text-blue-800 hover:bg-blue-50 rounded-md transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                  >
+                    <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+                    Upload Photo / Video
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setShow3DAnimation((prev) => !prev)}
@@ -586,7 +723,7 @@ export default function App() {
                         htmlFor="studio-template-preset"
                         className="block text-[11px] font-medium text-slate-500 mb-1"
                       >
-                        Template Base
+                        Template Base ({INITIAL_TEMPLATES.length})
                       </label>
                       <select
                         id="studio-template-preset"
@@ -777,15 +914,23 @@ export default function App() {
 
                     <button
                       type="button"
-                      onClick={() => setEnable3DCardTilt((prev) => !prev)}
-                      aria-pressed={enable3DCardTilt}
-                      className={`px-2.5 py-1.5 text-xs font-medium border rounded transition-colors whitespace-nowrap shrink-0 ${
-                        enable3DCardTilt
+                      onClick={() => {
+                        setInspectorTab('media');
+                        if (currentMedia.mode === 'artwork') {
+                          handleUpdateSlideMedia({
+                            mode: 'video',
+                            url: 'procedural://cinema-prism',
+                          });
+                        }
+                      }}
+                      className={`px-2.5 py-1.5 text-xs font-medium border rounded transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0 ${
+                        inspectorTab === 'media'
                           ? 'bg-blue-700 text-white border-blue-700'
                           : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                       }`}
                     >
-                      3D Tilt View
+                      <Film className="w-3.5 h-3.5" aria-hidden="true" />
+                      Edit Photo / Video
                     </button>
                   </div>
                 </div>
@@ -805,6 +950,7 @@ export default function App() {
                     headlineAnimation={headlineAnimation}
                     enable3DDesignMotion={enable3DCardTilt}
                     onUpdateSlideField={handleUpdateSlideField}
+                    onUpdateSlideMedia={handleUpdateSlideMedia}
                   />
                 </div>
 
@@ -834,40 +980,52 @@ export default function App() {
                 </div>
               </div>
 
-              {/* RIGHT INSPECTOR (3 Cols): Content & Theme Token Inspector */}
+              {/* RIGHT INSPECTOR (3 Cols): Copy, Photo & Video Editor, and Theme Inspector */}
               <aside
-                aria-label="Slide content and theme inspector"
+                aria-label="Slide content, photo video editor, and theme inspector"
                 className="lg:col-span-3 bg-white/95 border border-slate-200 p-4 space-y-4"
               >
-                {/* Segmented Inspector Mode Switch */}
-                <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-md">
+                {/* Segmented Inspector Mode Switch (3 Tabs) */}
+                <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-md">
                   <button
                     type="button"
                     onClick={() => setInspectorTab('content')}
-                    className={`py-1.5 px-2 text-xs font-medium rounded transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 ${
+                    className={`py-1.5 px-1.5 text-[11px] font-medium rounded transition-colors inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
                       inspectorTab === 'content'
                         ? 'bg-white text-slate-900 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <Layers className="w-3.5 h-3.5" aria-hidden="true" />
-                    Slide Copy & Data
+                    <Layers className="w-3 h-3" aria-hidden="true" />
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInspectorTab('media')}
+                    className={`py-1.5 px-1.5 text-[11px] font-medium rounded transition-colors inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
+                      inspectorTab === 'media'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Film className="w-3 h-3" aria-hidden="true" />
+                    Photo / Video
                   </button>
                   <button
                     type="button"
                     onClick={() => setInspectorTab('theme')}
-                    className={`py-1.5 px-2 text-xs font-medium rounded transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 ${
+                    className={`py-1.5 px-1.5 text-[11px] font-medium rounded transition-colors inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
                       inspectorTab === 'theme'
                         ? 'bg-white text-slate-900 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <Palette className="w-3.5 h-3.5" aria-hidden="true" />
-                    Theme & Fonts
+                    <Palette className="w-3 h-3" aria-hidden="true" />
+                    Theme
                   </button>
                 </div>
 
-                {inspectorTab === 'content' ? (
+                {inspectorTab === 'content' && (
                   <div className="space-y-3">
                     <div>
                       <label
@@ -1022,7 +1180,245 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                ) : (
+                )}
+
+                {inspectorTab === 'media' && (
+                  <div className="space-y-3.5">
+                    <div className="space-y-1.5">
+                      <span className="block text-[11px] font-semibold text-slate-700">
+                        Slide Visual Mode
+                      </span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {(
+                          [
+                            { id: 'artwork', label: 'Vector SVG' },
+                            { id: 'photo', label: 'Photo' },
+                            { id: 'video', label: 'Video' },
+                          ] as { id: SlideMediaMode; label: string }[]
+                        ).map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              if (
+                                m.id === 'photo' &&
+                                !currentMedia.url.startsWith('data:image')
+                              ) {
+                                handleUpdateSlideMedia({
+                                  mode: 'photo',
+                                  url: SAMPLE_MEDIA_ASSETS[0].url,
+                                  caption: SAMPLE_MEDIA_ASSETS[0].caption,
+                                });
+                              } else if (
+                                m.id === 'video' &&
+                                !currentMedia.url.startsWith('procedural://')
+                              ) {
+                                handleUpdateSlideMedia({
+                                  mode: 'video',
+                                  url: 'procedural://cinema-prism',
+                                  caption: SAMPLE_MEDIA_ASSETS[4].caption,
+                                });
+                              } else {
+                                handleUpdateSlideMedia({ mode: m.id });
+                              }
+                            }}
+                            className={`py-1.5 px-2 text-xs font-medium rounded border transition-colors whitespace-nowrap shrink-0 ${
+                              currentMedia.mode === m.id
+                                ? 'bg-blue-700 text-white border-blue-700'
+                                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                            }`}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Upload Local Photo or Video File */}
+                    <div className="pt-2 border-t border-slate-200 space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => studioMediaInputRef.current?.click()}
+                        className="w-full py-2 px-3 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0"
+                      >
+                        <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+                        Upload Your Own Photo / Video
+                      </button>
+
+                      <div>
+                        <label
+                          htmlFor="inspector-media-preset"
+                          className="block text-[11px] font-medium text-slate-500 mb-1"
+                        >
+                          Or Choose Studio Photo / Video Preset
+                        </label>
+                        <select
+                          id="inspector-media-preset"
+                          value={currentMedia.url}
+                          onChange={(e) => {
+                            const found = SAMPLE_MEDIA_ASSETS.find(
+                              (a) => a.url === e.target.value
+                            );
+                            if (found) {
+                              handleUpdateSlideMedia({
+                                mode: found.type,
+                                url: found.url,
+                                caption: found.caption,
+                              });
+                            }
+                          }}
+                          className="w-full px-2 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-800"
+                        >
+                          {SAMPLE_MEDIA_ASSETS.map((a) => (
+                            <option key={a.id} value={a.url}>
+                              [{a.type.toUpperCase()}] {a.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* 1-Click Color Grading LUT Presets */}
+                    <div className="pt-2 border-t border-slate-200 space-y-1.5">
+                      <span className="block text-[11px] font-semibold text-slate-700">
+                        1-Click LUT Filter Presets
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {MEDIA_FILTER_PRESETS.map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() =>
+                              handleUpdateSlideMedia({
+                                brightness: preset.brightness,
+                                contrast: preset.contrast,
+                                saturation: preset.saturation,
+                                sepia: preset.sepia,
+                                blurPx: preset.blurPx,
+                              })
+                            }
+                            className="px-2 py-1 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-800 rounded whitespace-nowrap shrink-0"
+                          >
+                            {preset.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Real-Time Optical Sliders */}
+                    <div className="pt-2 border-t border-slate-200 space-y-2">
+                      <div>
+                        <div className="flex justify-between text-[11px] text-slate-600">
+                          <label htmlFor="insp-brightness">Brightness</label>
+                          <span className="font-mono tabular-nums">
+                            {currentMedia.brightness}%
+                          </span>
+                        </div>
+                        <input
+                          id="insp-brightness"
+                          type="range"
+                          min={50}
+                          max={150}
+                          value={currentMedia.brightness}
+                          onChange={(e) =>
+                            handleUpdateSlideMedia({
+                              brightness: Number(e.target.value),
+                            })
+                          }
+                          className="w-full accent-blue-700"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-[11px] text-slate-600">
+                          <label htmlFor="insp-contrast">Contrast</label>
+                          <span className="font-mono tabular-nums">
+                            {currentMedia.contrast}%
+                          </span>
+                        </div>
+                        <input
+                          id="insp-contrast"
+                          type="range"
+                          min={50}
+                          max={160}
+                          value={currentMedia.contrast}
+                          onChange={(e) =>
+                            handleUpdateSlideMedia({
+                              contrast: Number(e.target.value),
+                            })
+                          }
+                          className="w-full accent-blue-700"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-[11px] text-slate-600">
+                          <label htmlFor="insp-saturation">Saturation</label>
+                          <span className="font-mono tabular-nums">
+                            {currentMedia.saturation}%
+                          </span>
+                        </div>
+                        <input
+                          id="insp-saturation"
+                          type="range"
+                          min={0}
+                          max={180}
+                          value={currentMedia.saturation}
+                          onChange={(e) =>
+                            handleUpdateSlideMedia({
+                              saturation: Number(e.target.value),
+                            })
+                          }
+                          className="w-full accent-blue-700"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-[11px] text-slate-600">
+                          <label htmlFor="insp-zoom">Zoom & Crop</label>
+                          <span className="font-mono tabular-nums">
+                            {currentMedia.zoom.toFixed(2)}x
+                          </span>
+                        </div>
+                        <input
+                          id="insp-zoom"
+                          type="range"
+                          min={1}
+                          max={1.6}
+                          step={0.05}
+                          value={currentMedia.zoom}
+                          onChange={(e) =>
+                            handleUpdateSlideMedia({
+                              zoom: Number(e.target.value),
+                            })
+                          }
+                          className="w-full accent-blue-700"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Media Caption Input */}
+                    <div className="pt-2 border-t border-slate-200">
+                      <label
+                        htmlFor="inspector-media-caption"
+                        className="block text-[11px] font-medium text-slate-500 mb-1"
+                      >
+                        Media Frame Caption
+                      </label>
+                      <input
+                        id="inspector-media-caption"
+                        type="text"
+                        value={currentMedia.caption}
+                        onChange={(e) =>
+                          handleUpdateSlideMedia({ caption: e.target.value })
+                        }
+                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded text-slate-900"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {inspectorTab === 'theme' && (
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="text-xs font-semibold text-slate-800">
@@ -1104,7 +1500,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* Section 02: Curated Template Gallery */}
+        {/* Section 02: Curated Template Gallery (12 Templates across 6 Categories) */}
         <TemplateGallery
           templates={INITIAL_TEMPLATES}
           themes={themes}
@@ -1113,10 +1509,19 @@ export default function App() {
           headlineAnimation={headlineAnimation}
           enable3DDesignMotion={enable3DCardTilt}
           onSelectTemplateForStudio={handleLoadTemplateIntoStudio}
+          onOpenTemplateMediaEditor={handleOpenTemplateMediaEditor}
           onPreviewTemplateDeck={handlePreviewTemplateModal}
         />
 
-        {/* Section 03: Brand Systems & Real-Time WCAG Contrast Lab */}
+        {/* Section 03: Interactive Photo & Video Media Studio Lab */}
+        <MediaStudioSection
+          theme={activeTheme}
+          headlineAnimation={headlineAnimation}
+          enable3DDesignMotion={enable3DCardTilt}
+          onApplyMediaToActiveSlide={handleApplyLabMediaToActiveSlide}
+        />
+
+        {/* Section 04: Brand Systems & Real-Time WCAG Contrast Lab */}
         <BrandSystemBuilder
           themes={themes}
           activeTheme={activeTheme}
@@ -1129,7 +1534,7 @@ export default function App() {
           onCreateCustomTheme={handleCreateCustomTheme}
         />
 
-        {/* Section 04: Saved Custom Decks & Quantitative Proof */}
+        {/* Section 05: Saved Custom Decks & Quantitative Proof */}
         <section
           id="saved-decks"
           className="scroll-mt-16 py-12 border-t border-slate-200/80 px-6"
@@ -1138,7 +1543,7 @@ export default function App() {
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
               <div className="space-y-2 max-w-2xl">
                 <p className="text-xs font-medium text-slate-500">
-                  04. Workspace Library & Institutional Benchmarks
+                  05. Workspace Library & Institutional Benchmarks
                 </p>
                 <AnimatedHeadline
                   as="h2"
@@ -1296,6 +1701,9 @@ export default function App() {
             </a>
             <a href="#template-gallery" className="hover:text-slate-900">
               Templates
+            </a>
+            <a href="#media-studio-lab" className="hover:text-slate-900">
+              Photo & Video Lab
             </a>
             <a href="#brand-systems" className="hover:text-slate-900">
               Brand Tokens

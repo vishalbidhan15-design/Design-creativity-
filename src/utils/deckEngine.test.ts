@@ -14,6 +14,10 @@ import {
   tokenizeHeadlineForAnimation,
   computeCard3DTiltTransform,
   HEADLINE_ANIMATION_PRESETS,
+  DEFAULT_SLIDE_MEDIA_CONFIG,
+  MEDIA_FILTER_PRESETS,
+  buildMediaFilterCss,
+  buildMediaTransformCss,
 } from './deckEngine';
 import { INITIAL_TEMPLATES, THEME_PALETTES, TYPOGRAPHY_PAIRS } from '../data/initialTemplates';
 
@@ -34,15 +38,26 @@ test('WCAG contrast calculation computes accurate ratios and compliance levels',
   assert.equal(getWcagComplianceLevel(lowContrast), 'Fail');
 });
 
-test('filterTemplates filters by category, aspect ratio, and search query', () => {
+test('filterTemplates filters by category, aspect ratio, and search query across 12 templates', () => {
+  assert.equal(INITIAL_TEMPLATES.length, 12);
+
   const pitchOnly = filterTemplates(
     INITIAL_TEMPLATES,
     'Pitch & Venture',
     '',
     'ALL'
   );
-  assert.ok(pitchOnly.length >= 1);
+  assert.ok(pitchOnly.length >= 2);
   assert.ok(pitchOnly.every((t) => t.category === 'Pitch & Venture'));
+
+  const mediaOnly = filterTemplates(
+    INITIAL_TEMPLATES,
+    'Media & Video Showreel',
+    '',
+    'ALL'
+  );
+  assert.ok(mediaOnly.length >= 1);
+  assert.ok(mediaOnly.every((t) => t.category === 'Media & Video Showreel'));
 
   const searchMatch = filterTemplates(
     INITIAL_TEMPLATES,
@@ -134,4 +149,29 @@ test('tokenizeHeadlineForAnimation and computeCard3DTiltTransform produce determ
   assert.ok(tiltCss.includes('rotateY(4deg)'));
   assert.ok(tiltCss.includes('translateZ(14px)'));
 });
+
+test('buildMediaFilterCss and buildMediaTransformCss generate accurate CSS filter and transform strings', () => {
+  assert.equal(MEDIA_FILTER_PRESETS.length, 5);
+  const filterCss = buildMediaFilterCss({
+    ...DEFAULT_SLIDE_MEDIA_CONFIG,
+    brightness: 112,
+    contrast: 120,
+    saturation: 90,
+    sepia: 15,
+    blurPx: 2,
+  });
+  assert.equal(
+    filterCss,
+    'brightness(112%) contrast(120%) saturate(90%) sepia(15%) blur(2px)'
+  );
+
+  const transformCss = buildMediaTransformCss({
+    ...DEFAULT_SLIDE_MEDIA_CONFIG,
+    zoom: 1.25,
+    panX: 10,
+    panY: -5,
+  });
+  assert.equal(transformCss, 'scale(1.25) translate(10%, -5%)');
+});
+
 

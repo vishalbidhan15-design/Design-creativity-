@@ -447,4 +447,190 @@ export function computeCard3DTiltTransform(
   return `perspective(1100px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(${elevationZPx}px)`;
 }
 
+export const DEFAULT_SLIDE_MEDIA_CONFIG: import('../types/presentation').SlideMediaConfig = {
+  mode: 'artwork',
+  url: '',
+  caption: 'Executive Visual Plate · 4K Studio Capture',
+  objectFit: 'cover',
+  brightness: 100,
+  contrast: 100,
+  saturation: 100,
+  sepia: 0,
+  blurPx: 0,
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  borderRadiusPx: 4,
+  videoAutoplay: true,
+  videoLoop: true,
+  videoMuted: true,
+  videoPlaybackRate: 1,
+};
+
+export interface MediaFilterPreset {
+  id: string;
+  name: string;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  sepia: number;
+  blurPx: number;
+}
+
+export const MEDIA_FILTER_PRESETS: MediaFilterPreset[] = [
+  {
+    id: 'preset-original',
+    name: 'Original Studio',
+    brightness: 100,
+    contrast: 100,
+    saturation: 100,
+    sepia: 0,
+    blurPx: 0,
+  },
+  {
+    id: 'preset-monochrome',
+    name: 'Cinema Monochrome',
+    brightness: 105,
+    contrast: 128,
+    saturation: 0,
+    sepia: 6,
+    blurPx: 0,
+  },
+  {
+    id: 'preset-kodachrome',
+    name: 'Warm Kodachrome',
+    brightness: 104,
+    contrast: 116,
+    saturation: 135,
+    sepia: 24,
+    blurPx: 0,
+  },
+  {
+    id: 'preset-keynote-vivid',
+    name: 'High-Contrast Keynote',
+    brightness: 106,
+    contrast: 132,
+    saturation: 145,
+    sepia: 0,
+    blurPx: 0,
+  },
+  {
+    id: 'preset-blueprint',
+    name: 'Soft Matte Film',
+    brightness: 108,
+    contrast: 92,
+    saturation: 82,
+    sepia: 12,
+    blurPx: 0,
+  },
+];
+
+function createStudioSvgDataUri(svgContent: string): string {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svgContent.trim())}`;
+}
+
+export interface SampleMediaAsset {
+  id: string;
+  title: string;
+  type: 'photo' | 'video';
+  url: string;
+  caption: string;
+}
+
+export const SAMPLE_MEDIA_ASSETS: SampleMediaAsset[] = [
+  {
+    id: 'sample-photo-arch',
+    title: 'Nordic Timber Pavilion Photo',
+    type: 'photo',
+    caption: 'Copenhagen Waterfront Pavilion · Architectural Photography Plate',
+    url: createStudioSvgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#0F172A"/>
+            <stop offset="50%" stop-color="#1E3A8A"/>
+            <stop offset="100%" stop-color="#C2410C"/>
+          </linearGradient>
+          <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1E293B"/>
+            <stop offset="100%" stop-color="#090D16"/>
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="440" fill="url(#sky)"/>
+        <circle cx="920" cy="190" r="88" fill="#FBBF24" fill-opacity="0.85"/>
+        <rect y="440" width="1200" height="235" fill="url(#water)"/>
+        <polygon points="120,250 1080,170 1040,220 120,295" fill="#F59E0B"/>
+        <rect x="210" y="275" width="26" height="165" fill="#F8FAFC"/>
+        <rect x="390" y="260" width="26" height="180" fill="#F8FAFC"/>
+        <rect x="570" y="245" width="26" height="195" fill="#F8FAFC"/>
+        <rect x="750" y="230" width="26" height="210" fill="#F8FAFC"/>
+        <rect x="930" y="215" width="26" height="225" fill="#F8FAFC"/>
+        <rect x="100" y="425" width="1000" height="22" fill="#E2E8F0"/>
+        <line x1="100" y1="490" x2="1100" y2="490" stroke="#38BDF8" stroke-width="3" stroke-opacity="0.45"/>
+        <line x1="220" y1="535" x2="980" y2="535" stroke="#FBBF24" stroke-width="2" stroke-opacity="0.4"/>
+      </svg>
+    `),
+  },
+  {
+    id: 'sample-photo-hardware',
+    title: 'Titanium Monolith Studio Photo',
+    type: 'photo',
+    caption: 'Grade-5 Anodized Optical Chassis · Studio Macro Capture',
+    url: createStudioSvgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675">
+        <defs>
+          <radialGradient id="studioGlow" cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.45"/>
+            <stop offset="55%" stop-color="#1E1B4B" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#09090B"/>
+          </radialGradient>
+        </defs>
+        <rect width="1200" height="675" fill="url(#studioGlow)"/>
+        <rect x="260" y="110" width="680" height="455" rx="24" fill="#18181B" stroke="#60A5FA" stroke-width="4"/>
+        <rect x="310" y="150" width="580" height="375" rx="14" fill="#09090B" stroke="#38BDF8" stroke-width="2"/>
+        <circle cx="600" cy="337" r="118" fill="#1E293B" stroke="#F59E0B" stroke-width="6"/>
+        <circle cx="600" cy="337" r="56" fill="#3B82F6" fill-opacity="0.35" stroke="#F8FAFC" stroke-width="3"/>
+        <circle cx="600" cy="337" r="16" fill="#F59E0B"/>
+        <line x1="340" y1="337" x2="460" y2="337" stroke="#38BDF8" stroke-width="4"/>
+        <line x1="740" y1="337" x2="860" y2="337" stroke="#38BDF8" stroke-width="4"/>
+      </svg>
+    `),
+  },
+  {
+    id: 'sample-video-showreel',
+    title: '4K Telemetry & Motion Showreel (Video)',
+    type: 'video',
+    caption: 'procedural://showreel-telemetry',
+    url: 'procedural://showreel-telemetry',
+  },
+  {
+    id: 'sample-video-aurora',
+    title: 'Cinema Prism Light Wave (Video)',
+    type: 'video',
+    caption: 'procedural://cinema-prism',
+    url: 'procedural://cinema-prism',
+  },
+];
+
+export function buildMediaFilterCss(
+  media: import('../types/presentation').SlideMediaConfig
+): string {
+  const b = Math.max(20, Math.min(200, media.brightness ?? 100));
+  const c = Math.max(20, Math.min(200, media.contrast ?? 100));
+  const s = Math.max(0, Math.min(250, media.saturation ?? 100));
+  const sep = Math.max(0, Math.min(100, media.sepia ?? 0));
+  const blur = Math.max(0, Math.min(20, media.blurPx ?? 0));
+  return `brightness(${b}%) contrast(${c}%) saturate(${s}%) sepia(${sep}%) blur(${blur}px)`;
+}
+
+export function buildMediaTransformCss(
+  media: import('../types/presentation').SlideMediaConfig
+): string {
+  const z = Number(Math.max(0.5, Math.min(2.5, media.zoom ?? 1)).toFixed(2));
+  const px = Number(Math.max(-50, Math.min(50, media.panX ?? 0)).toFixed(1));
+  const py = Number(Math.max(-50, Math.min(50, media.panY ?? 0)).toFixed(1));
+  return `scale(${z}) translate(${px}%, ${py}%)`;
+}
+
+
 

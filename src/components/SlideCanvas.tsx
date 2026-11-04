@@ -7,9 +7,12 @@ import {
 } from '../types/presentation';
 import {
   computeCard3DTiltTransform,
+  DEFAULT_SLIDE_MEDIA_CONFIG,
   HeadlineAnimationStyle,
+  SAMPLE_MEDIA_ASSETS,
 } from '../utils/deckEngine';
 import { SlideArtwork } from './SlideArtwork';
+import { SlideMediaFrame } from './SlideMediaFrame';
 import { AnimatedHeadline } from './AnimatedHeadline';
 
 interface SlideCanvasProps {
@@ -205,12 +208,27 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
             </div>
 
             <div className="col-span-5 flex flex-col justify-center preserve-3d">
-              <SlideArtwork
-                artworkId={slide.artworkId}
-                theme={theme}
-                compact={compact}
-                className="w-full h-full"
-              />
+              {slide.customMedia && slide.customMedia.mode !== 'artwork' ? (
+                <SlideMediaFrame
+                  media={slide.customMedia}
+                  theme={theme}
+                  compact={compact}
+                  editable={editable}
+                  onUpdateMedia={
+                    onUpdateSlideField
+                      ? (m) => onUpdateSlideField('customMedia', m)
+                      : undefined
+                  }
+                  className="w-full h-full"
+                />
+              ) : (
+                <SlideArtwork
+                  artworkId={slide.artworkId}
+                  theme={theme}
+                  compact={compact}
+                  className="w-full h-full"
+                />
+              )}
             </div>
           </div>
         )}
@@ -325,12 +343,27 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
             </div>
 
             <div className="col-span-6 flex flex-col justify-center preserve-3d">
-              <SlideArtwork
-                artworkId={slide.artworkId}
-                theme={theme}
-                compact={compact}
-                className="w-full h-full"
-              />
+              {slide.customMedia && slide.customMedia.mode !== 'artwork' ? (
+                <SlideMediaFrame
+                  media={slide.customMedia}
+                  theme={theme}
+                  compact={compact}
+                  editable={editable}
+                  onUpdateMedia={
+                    onUpdateSlideField
+                      ? (m) => onUpdateSlideField('customMedia', m)
+                      : undefined
+                  }
+                  className="w-full h-full"
+                />
+              ) : (
+                <SlideArtwork
+                  artworkId={slide.artworkId}
+                  theme={theme}
+                  compact={compact}
+                  className="w-full h-full"
+                />
+              )}
             </div>
           </div>
         )}
@@ -544,6 +577,85 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {slide.layout === 'media-showcase' && (
+          <div className="grid grid-cols-12 gap-4 items-stretch h-full preserve-3d">
+            <div className="col-span-5 flex flex-col justify-between space-y-2 preserve-3d">
+              <div className="space-y-1.5">
+                <AnimatedHeadline
+                  as="h2"
+                  text={slide.headline}
+                  animationStyle={headlineAnimation}
+                  primaryColorHex={theme.textPrimaryHex}
+                  accentColorHex={theme.accentHex}
+                  fontFamilyCss={typography.headingFontFamilyCss}
+                  className={`${headlineSizeStandard} font-bold tracking-tight leading-snug`}
+                />
+                <p className="text-xs font-medium" style={{ color: theme.accentHex }}>
+                  {slide.subtitle}
+                </p>
+                <p
+                  className="text-[11px] sm:text-xs leading-relaxed line-clamp-3"
+                  style={{ color: theme.textMutedHex }}
+                >
+                  {slide.bodyCopy}
+                </p>
+              </div>
+
+              {slide.kpis.length > 0 && (
+                <div
+                  className="grid grid-cols-2 gap-2 pt-2 border-t"
+                  style={{ borderColor: theme.borderHex }}
+                >
+                  {slide.kpis.slice(0, 2).map((kpi, idx) => (
+                    <div
+                      key={kpi.id || idx}
+                      className={enable3DDesignMotion ? 'animate-headline-depth' : ''}
+                      style={{ animationDelay: `${idx * 150}ms` }}
+                    >
+                      <div className="text-[10px] truncate" style={{ color: theme.textMutedHex }}>
+                        {kpi.label}
+                      </div>
+                      <div className="text-sm sm:text-base font-bold font-mono tabular-nums whitespace-nowrap">
+                        {kpi.value}
+                      </div>
+                      <div
+                        className="text-[10px] font-mono truncate"
+                        style={{ color: theme.accentHex }}
+                      >
+                        {kpi.delta}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="col-span-7 flex flex-col justify-center preserve-3d">
+              <SlideMediaFrame
+                media={
+                  slide.customMedia && slide.customMedia.mode !== 'artwork'
+                    ? slide.customMedia
+                    : {
+                        ...DEFAULT_SLIDE_MEDIA_CONFIG,
+                        mode: 'video',
+                        url: SAMPLE_MEDIA_ASSETS[2].url,
+                        caption: 'Interactive 4K Motion Showreel · Upload Photo or Video',
+                      }
+                }
+                theme={theme}
+                compact={compact}
+                editable={editable}
+                onUpdateMedia={
+                  onUpdateSlideField
+                    ? (m) => onUpdateSlideField('customMedia', m)
+                    : undefined
+                }
+                className="w-full h-full"
+              />
             </div>
           </div>
         )}
