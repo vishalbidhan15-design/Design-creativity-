@@ -23,6 +23,12 @@ import {
   injectVisitorSlotMediaIntoSlides,
   PREDEFINED_MEDIA_SLOTS,
 } from './deckEngine';
+import {
+  TEMPLE_STYLE_PRESETS,
+  generateProceduralTempleTextureSvg,
+  computeDiyaFlickerIntensity,
+  computeIncenseSmokeOffset,
+} from './templeEngine';
 import { INITIAL_TEMPLATES, THEME_PALETTES, TYPOGRAPHY_PAIRS } from '../data/initialTemplates';
 
 test('WCAG contrast calculation computes accurate ratios and compliance levels', () => {
@@ -42,8 +48,17 @@ test('WCAG contrast calculation computes accurate ratios and compliance levels',
   assert.equal(getWcagComplianceLevel(lowContrast), 'Fail');
 });
 
-test('filterTemplates filters by category, aspect ratio, and search query across 12 templates', () => {
-  assert.equal(INITIAL_TEMPLATES.length, 12);
+test('filterTemplates filters by category, aspect ratio, and search query across 16 templates including 4 Sacred Temple styles', () => {
+  assert.equal(INITIAL_TEMPLATES.length, 16);
+
+  const templeOnly = filterTemplates(
+    INITIAL_TEMPLATES,
+    'Sacred & Temple Architecture',
+    '',
+    'ALL'
+  );
+  assert.equal(templeOnly.length, 4);
+  assert.ok(templeOnly.every((t) => t.category === 'Sacred & Temple Architecture'));
 
   const pitchOnly = filterTemplates(
     INITIAL_TEMPLATES,
@@ -184,7 +199,7 @@ test('isAdminModeFromSearch and injectVisitorMediaIntoSlides support Visitor Sho
   assert.equal(isAdminModeFromSearch('?mode=admin'), true);
   assert.equal(isAdminModeFromSearch('?foo=bar&mode=ADMIN'), true);
 
-  const baseSlides = INITIAL_TEMPLATES[0].slides;
+  const baseSlides = INITIAL_TEMPLATES[4].slides;
   const injected = injectVisitorMediaIntoSlides(baseSlides, [
     {
       id: 'visitor-1',
@@ -216,5 +231,21 @@ test('isAdminModeFromSearch and injectVisitorMediaIntoSlides support Visitor Sho
   });
   assert.equal(slotInjected[1].customMedia?.url, 'blob:http://localhost:3000/slot-2-video');
   assert.equal(slotInjected[4].customMedia?.url, 'blob:http://localhost:3000/slot-2-video');
+});
+
+test('templeEngine generates HD procedural textures and 60fps diya/incense physics for all 4 temple styles', () => {
+  assert.equal(TEMPLE_STYLE_PRESETS.length, 4);
+  for (const preset of TEMPLE_STYLE_PRESETS) {
+    const svgDataUri = generateProceduralTempleTextureSvg(preset.id);
+    assert.ok(svgDataUri.startsWith('data:image/svg+xml;utf8,'));
+  }
+
+  const flicker = computeDiyaFlickerIntensity(1.2, 1);
+  assert.ok(flicker >= 0.55 && flicker <= 1.0);
+
+  const smoke = computeIncenseSmokeOffset(2.4, 1);
+  assert.ok(typeof smoke.xOffset === 'number');
+  assert.ok(smoke.yProgress >= 0 && smoke.yProgress <= 1);
+  assert.ok(smoke.opacity >= 0 && smoke.opacity <= 0.35);
 });
 

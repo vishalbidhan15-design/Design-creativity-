@@ -36,6 +36,11 @@ import {
   VisitorUploadedAsset,
 } from './utils/deckEngine';
 import { downloadActiveSlideToGallery } from './utils/slideGalleryExport';
+import {
+  DEFAULT_TEMPLE_FX_CONFIG,
+  TEMPLE_STYLE_PRESETS,
+  TempleAmbientFxConfig,
+} from './utils/templeEngine';
 import { SlideCanvas } from './components/SlideCanvas';
 import { ThreeStageShowcase } from './components/ThreeStageShowcase';
 import { TemplateGallery } from './components/TemplateGallery';
@@ -62,6 +67,9 @@ import {
   Lock,
   Sparkles,
   Camera,
+  Flame,
+  Sun,
+  Wind,
 } from 'lucide-react';
 
 const LAYOUT_OPTIONS: { value: SlideLayoutType; label: string }[] = [
@@ -75,6 +83,10 @@ const LAYOUT_OPTIONS: { value: SlideLayoutType; label: string }[] = [
 ];
 
 const ARTWORK_OPTIONS: { value: VisualArtworkId; label: string }[] = [
+  { value: 'dravidian-gopuram', label: 'Dravidian Granite Gopuram & Kalash' },
+  { value: 'nagara-shikhara', label: 'Nagara Sandstone Shikhara & Jaali' },
+  { value: 'himalayan-pagoda', label: 'Himalayan Cedar Pagoda & Brass Bells' },
+  { value: 'makrana-mandapa', label: 'White Marble Sanctum & Gold Inlay' },
   { value: 'venture-topology', label: 'Telemetry Network Graph' },
   { value: 'arch-pavilion', label: 'Nordhavn Timber Elevation' },
   { value: 'hardware-monolith', label: 'Grade-5 Titanium Section' },
@@ -168,10 +180,13 @@ export default function App() {
   });
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
   const [activeTheme, setActiveTheme] = useState<ThemePalette>(
-    THEME_PALETTES[1]
+    THEME_PALETTES[0]
   );
   const [activeTypography, setActiveTypography] = useState<TypographyPair>(
-    TYPOGRAPHY_PAIRS[0]
+    TYPOGRAPHY_PAIRS[1]
+  );
+  const [templeFxConfig, setTempleFxConfig] = useState<TempleAmbientFxConfig>(
+    DEFAULT_TEMPLE_FX_CONFIG
   );
   const [showGridGuides, setShowGridGuides] = useState<boolean>(false);
   const [inspectorTab, setInspectorTab] = useState<
@@ -962,6 +977,176 @@ export default function App() {
               </div>
             )}
 
+            {/* Sacred Temple Collection & Dark/Gold Theme + Ambient FX Controls Bar */}
+            <div
+              data-testid="temple-architecture-controls"
+              className="bg-slate-950/95 border border-amber-500/35 p-5 space-y-4 text-white shadow-sm"
+            >
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3.5 border-b border-amber-500/20">
+                <div className="space-y-1">
+                  <div className="text-xs font-mono uppercase tracking-wider text-amber-400 font-semibold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+                    Sacred Temple Presentation Collection · HD Procedural Stone, Wood & Marble
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    Select any of the 4 sacred architectural traditions below to load its carved pillars, HD procedural textures, and 60fps golden sanctuary showreel.
+                  </p>
+                </div>
+
+                {/* Dark / Gold Theme Controls */}
+                <div
+                  data-testid="dark-gold-theme-controls"
+                  className="flex flex-wrap items-center gap-1.5 shrink-0"
+                >
+                  <span className="text-[11px] font-mono text-amber-300 mr-1">
+                    Dark / Gold Theme:
+                  </span>
+                  {THEME_PALETTES.slice(0, 4).map((t) => {
+                    const isSelected = activeTheme.id === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        data-testid={`theme-btn-${t.id}`}
+                        onClick={() => setActiveTheme(t)}
+                        className={`px-2.5 py-1.5 text-xs font-medium rounded border transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                          isSelected
+                            ? 'bg-amber-500 text-slate-950 border-amber-400 font-semibold'
+                            : 'bg-slate-900 text-slate-200 border-white/15 hover:border-amber-400/50'
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full border border-white/30 shrink-0"
+                          style={{ backgroundColor: t.backgroundHex }}
+                        />
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: t.accentHex }}
+                        />
+                        {t.name.split(' ')[0]} {t.name.split(' ')[1]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4 Sacred Temple Style Selector Cards with 3D Hover Depth */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {INITIAL_TEMPLATES.slice(0, 4).map((tpl, idx) => {
+                  const isCurrent = tpl.id === activeTemplateId;
+                  const preset = TEMPLE_STYLE_PRESETS[idx];
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      data-testid={`select-temple-style-${tpl.templeTextureId}`}
+                      onClick={() => handleLoadTemplateIntoStudio(tpl)}
+                      className={`p-3.5 text-left border transition-all duration-150 flex flex-col justify-between gap-2 ${
+                        isCurrent
+                          ? 'bg-amber-500/15 border-amber-400 shadow-md -translate-y-0.5'
+                          : 'bg-slate-900/90 border-white/15 hover:border-amber-400/60 hover:-translate-y-0.5'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-amber-400 font-semibold">
+                            0{idx + 1}. {preset?.name || tpl.title}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-emerald-300 font-semibold">
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs font-semibold text-white truncate">
+                          {preset?.materialLabel}
+                        </div>
+                        <p className="text-[11px] text-slate-300 line-clamp-2">
+                          {preset?.motifSummary}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[10px] font-mono text-amber-200/90">
+                        <span>{tpl.slides.length} Slides · {tpl.aspectRatio}</span>
+                        <span>Load Sanctuary →</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Ambient Visual FX Controls: Golden God Rays, Incense Smoke Mist, Flickering Diya Glows, Smooth Pillar Pan */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-amber-500/20 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-mono text-amber-300 uppercase tracking-wider">
+                    Sacred Ambient FX (60fps):
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="toggle-god-rays-btn"
+                    aria-pressed={templeFxConfig.godRays}
+                    onClick={() =>
+                      setTempleFxConfig((prev) => ({
+                        ...prev,
+                        godRays: !prev.godRays,
+                      }))
+                    }
+                    className={`px-2.5 py-1 text-xs font-medium rounded border transition-colors inline-flex items-center gap-1.5 ${
+                      templeFxConfig.godRays
+                        ? 'bg-amber-500/20 border-amber-400 text-amber-200'
+                        : 'bg-slate-900 border-white/15 text-slate-400'
+                    }`}
+                  >
+                    <Sun className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+                    Golden God Rays: {templeFxConfig.godRays ? 'ON' : 'OFF'}
+                  </button>
+
+                  <button
+                    type="button"
+                    data-testid="toggle-incense-mist-btn"
+                    aria-pressed={templeFxConfig.incenseSmoke}
+                    onClick={() =>
+                      setTempleFxConfig((prev) => ({
+                        ...prev,
+                        incenseSmoke: !prev.incenseSmoke,
+                      }))
+                    }
+                    className={`px-2.5 py-1 text-xs font-medium rounded border transition-colors inline-flex items-center gap-1.5 ${
+                      templeFxConfig.incenseSmoke
+                        ? 'bg-amber-500/20 border-amber-400 text-amber-200'
+                        : 'bg-slate-900 border-white/15 text-slate-400'
+                    }`}
+                  >
+                    <Wind className="w-3.5 h-3.5 text-amber-300" aria-hidden="true" />
+                    Incense Smoke Mist: {templeFxConfig.incenseSmoke ? 'ON' : 'OFF'}
+                  </button>
+
+                  <button
+                    type="button"
+                    data-testid="toggle-diya-glows-btn"
+                    aria-pressed={templeFxConfig.diyaLamps}
+                    onClick={() =>
+                      setTempleFxConfig((prev) => ({
+                        ...prev,
+                        diyaLamps: !prev.diyaLamps,
+                      }))
+                    }
+                    className={`px-2.5 py-1 text-xs font-medium rounded border transition-colors inline-flex items-center gap-1.5 ${
+                      templeFxConfig.diyaLamps
+                        ? 'bg-amber-500/20 border-amber-400 text-amber-200'
+                        : 'bg-slate-900 border-white/15 text-slate-400'
+                    }`}
+                  >
+                    <Flame className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+                    Flickering Diya Lamps: {templeFxConfig.diyaLamps ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
+                <span className="text-[11px] font-mono text-amber-300/90">
+                  Cinematic Pillar Pan & Zoom Transition Active
+                </span>
+              </div>
+            </div>
+
             {/* CONDITIONAL WORKSPACE: Visitor Read-Only Showcase with Predefined Media Slots vs. Admin 3-Pane Studio (?mode=admin) */}
             {!isAdminMode ? (
               <div
@@ -1068,7 +1253,7 @@ export default function App() {
                           onClick={() => setActiveSlideIndex(idx)}
                           className={`px-2.5 py-1 text-xs font-mono tabular-nums rounded transition-colors whitespace-nowrap shrink-0 ${
                             idx === activeSlideIndex
-                              ? 'bg-blue-600 text-white font-semibold'
+                              ? 'bg-amber-500 text-slate-950 font-semibold'
                               : 'text-slate-300 hover:text-white hover:bg-white/10'
                           }`}
                         >
@@ -1088,7 +1273,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Centered 3D Spatial Showcase Slide Stage (Read-Only, Automatic 3D Tilt + Floating Motion + Dynamic Zoom) */}
+                {/* Centered 3D Spatial Showcase Slide Stage (Read-Only, Automatic 3D Tilt + Sacred Ambient FX + Pillar Pan) */}
                 <div className="max-w-5xl mx-auto preserve-3d">
                   <SlideCanvas
                     slide={currentSlide}
@@ -1102,6 +1287,7 @@ export default function App() {
                     editable={false}
                     headlineAnimation="kinetic-3d-wave"
                     enable3DDesignMotion={true}
+                    templeFxConfig={templeFxConfig}
                   />
                 </div>
 
@@ -1377,6 +1563,7 @@ export default function App() {
                       editable={true}
                       headlineAnimation={headlineAnimation}
                       enable3DDesignMotion={enable3DCardTilt}
+                      templeFxConfig={templeFxConfig}
                       onUpdateSlideField={handleUpdateSlideField}
                     />
                   </div>

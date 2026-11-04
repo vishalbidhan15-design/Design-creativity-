@@ -58,15 +58,40 @@ export const SlideMediaFrame: React.FC<SlideMediaFrameProps> = ({
     let phase = 0;
     const isPrism = media.url === 'procedural://cinema-prism';
     const isFunnyArcade = media.url === 'procedural://funny-arcade-reel';
+    const isTempleSanctum = Boolean(
+      media.url && media.url.startsWith('procedural://temple-')
+    );
+    const isMarbleTemple = media.url === 'procedural://temple-makrana-sanctum';
+    const isSandstoneTemple = media.url === 'procedural://temple-nagara-sanctum';
+    const isCedarTemple = media.url === 'procedural://temple-himalayan-sanctum';
 
     const drawFrame = () => {
       const w = canvas.width;
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
 
-      // Deep cinema or playful aurora background
+      // Deep cinema, playful aurora, or sacred temple sanctum background
       const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-      if (isFunnyArcade) {
+      if (isTempleSanctum) {
+        if (isMarbleTemple) {
+          bgGrad.addColorStop(0, '#F5F0E6');
+          bgGrad.addColorStop(0.5, '#EAE2D3');
+          bgGrad.addColorStop(1, '#DCD2C0');
+        } else if (isSandstoneTemple) {
+          bgGrad.addColorStop(0, '#1F120B');
+          bgGrad.addColorStop(0.5, '#331D12');
+          bgGrad.addColorStop(1, '#140B07');
+        } else if (isCedarTemple) {
+          bgGrad.addColorStop(0, '#0D1311');
+          bgGrad.addColorStop(0.5, '#182420');
+          bgGrad.addColorStop(1, '#090D0C');
+        } else {
+          // Dravidian Granite & Gold
+          bgGrad.addColorStop(0, '#0B0A09');
+          bgGrad.addColorStop(0.5, '#1C1917');
+          bgGrad.addColorStop(1, '#090807');
+        }
+      } else if (isFunnyArcade) {
         bgGrad.addColorStop(0, '#1E1B4B');
         bgGrad.addColorStop(0.5, '#3B0764');
         bgGrad.addColorStop(1, '#0F172A');
@@ -82,86 +107,207 @@ export const SlideMediaFrame: React.FC<SlideMediaFrameProps> = ({
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // Subtle architectural grid
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
-      ctx.lineWidth = 1;
-      for (let x = 40; x < w; x += 60) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-      for (let y = 30; y < h; y += 45) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-
-      if (isFunnyArcade) {
-        // Playful bouncing 3D spheres & confetti rings for funny video showcase
-        const colors = ['#F43F5E', '#FBBF24', '#34D399', '#38BDF8', '#A855F7'];
-        for (let i = 0; i < 5; i++) {
-          const bx = w * (0.18 + i * 0.16) + Math.sin(phase * 1.4 + i) * 26;
-          const bounce = Math.abs(Math.sin(phase * 2.2 + i * 0.75));
-          const by = h * 0.68 - bounce * (h * 0.36);
-          const radius = 24 + (i % 3) * 6;
-
-          ctx.fillStyle = colors[i % colors.length];
+      if (isTempleSanctum) {
+        // 1. Diagonal Golden God Rays
+        ctx.save();
+        for (let r = 0; r < 4; r++) {
+          const rayX = 70 + r * 125 + Math.sin(phase * 0.7 + r) * 14;
+          const rayGrad = ctx.createLinearGradient(rayX, 0, rayX + 90, h);
+          rayGrad.addColorStop(
+            0,
+            isMarbleTemple
+              ? 'rgba(217, 119, 6, 0.22)'
+              : 'rgba(251, 191, 36, 0.25)'
+          );
+          rayGrad.addColorStop(1, 'rgba(245, 158, 11, 0.0)');
+          ctx.fillStyle = rayGrad;
           ctx.beginPath();
-          ctx.arc(bx, by, radius, 0, Math.PI * 2);
+          ctx.moveTo(rayX - 24, 0);
+          ctx.lineTo(rayX + 36, 0);
+          ctx.lineTo(rayX + 135, h);
+          ctx.lineTo(rayX + 35, h);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // 2. Smooth Panning Carved Temple Pillars & Gopuram/Mandapa Silhouette
+        const panX = Math.sin(phase * 0.45) * 22;
+        const pillarColor = isMarbleTemple
+          ? 'rgba(120, 113, 108, 0.35)'
+          : 'rgba(28, 25, 23, 0.88)';
+        const goldStroke = isMarbleTemple ? '#B45309' : '#F59E0B';
+
+        [65, 165, 395, 495].forEach((basePx, idx) => {
+          const px = basePx + panX * (idx % 2 === 0 ? 1 : 0.65);
+          ctx.fillStyle = pillarColor;
+          ctx.fillRect(px - 16, 36, 32, h - 68);
+          ctx.strokeStyle = goldStroke;
+          ctx.lineWidth = 1.4;
+          ctx.strokeRect(px - 16, 36, 32, h - 68);
+          // Carved pillar capital & kalash motif
+          ctx.fillStyle = goldStroke;
+          ctx.fillRect(px - 22, 32, 44, 6);
+          ctx.fillRect(px - 20, h - 34, 40, 6);
+        });
+
+        // Central Sanctum Kalash / Mandala Emblem
+        const centerX = w / 2 + panX * 0.4;
+        const centerY = h * 0.46;
+        ctx.strokeStyle = goldStroke;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 42, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY - 56);
+        ctx.lineTo(centerX - 16, centerY - 26);
+        ctx.lineTo(centerX + 16, centerY - 26);
+        ctx.closePath();
+        ctx.fillStyle = goldStroke;
+        ctx.fill();
+
+        // 3. Rising Incense Smoke Mist Wisps
+        for (let s = 0; s < 5; s++) {
+          const smokeY = h - 30 - ((phase * 28 + s * 52) % (h * 0.72));
+          const smokeX =
+            w * (0.25 + s * 0.12) + Math.sin(phase * 1.3 + s) * 18;
+          const smokeAlpha = Math.max(
+            0.04,
+            Math.sin(((h - smokeY) / (h * 0.72)) * Math.PI) * 0.24
+          );
+          const smokeGrad = ctx.createRadialGradient(
+            smokeX,
+            smokeY,
+            2,
+            smokeX,
+            smokeY,
+            34
+          );
+          smokeGrad.addColorStop(0, `rgba(254, 243, 199, ${smokeAlpha})`);
+          smokeGrad.addColorStop(1, 'rgba(254, 243, 199, 0)');
+          ctx.fillStyle = smokeGrad;
+          ctx.beginPath();
+          ctx.arc(smokeX, smokeY, 34, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 4. Flickering Golden Diya Lamps along the Sanctum Plinth
+        for (let d = 0; d < 5; d++) {
+          const dx = 90 + d * 95;
+          const dy = h - 22;
+          const flicker = 0.78 + Math.sin(phase * 6.5 + d * 1.9) * 0.22;
+          const haloGrad = ctx.createRadialGradient(
+            dx,
+            dy - 5,
+            1,
+            dx,
+            dy - 5,
+            22 * flicker
+          );
+          haloGrad.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
+          haloGrad.addColorStop(0.45, 'rgba(245, 158, 11, 0.45)');
+          haloGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+          ctx.fillStyle = haloGrad;
+          ctx.beginPath();
+          ctx.arc(dx, dy - 5, 22 * flicker, 0, Math.PI * 2);
           ctx.fill();
 
-          // Playful eyes on bouncing spheres
-          ctx.fillStyle = '#FFFFFF';
+          // Flame tip
+          ctx.fillStyle = '#FEF08A';
           ctx.beginPath();
-          ctx.arc(bx - 7, by - 4, 4.5, 0, Math.PI * 2);
-          ctx.arc(bx + 7, by - 4, 4.5, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#0F172A';
-          ctx.beginPath();
-          ctx.arc(bx - 6, by - 4, 2, 0, Math.PI * 2);
-          ctx.arc(bx + 8, by - 4, 2, 0, Math.PI * 2);
+          ctx.arc(dx, dy - 5, 3.5 * flicker, 0, Math.PI * 2);
           ctx.fill();
         }
       } else {
-        // Animated wave / telemetry curves
-        for (let layer = 0; layer < 3; layer++) {
+        // Subtle architectural grid
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+        ctx.lineWidth = 1;
+        for (let x = 40; x < w; x += 60) {
           ctx.beginPath();
-          const colors = isPrism
-            ? ['#F472B6', '#818CF8', '#38BDF8']
-            : ['#38BDF8', '#60A5FA', '#F59E0B'];
-          ctx.strokeStyle = colors[layer];
-          ctx.lineWidth = 3 - layer * 0.6;
-          for (let x = 0; x <= w; x += 12) {
-            const y =
-              h * 0.52 +
-              Math.sin(x * 0.014 + phase * (1.2 + layer * 0.35) + layer) *
-                (28 + layer * 14) +
-              Math.cos(x * 0.008 - phase * 0.8) * 14;
-            if (x === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          }
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+        for (let y = 30; y < h; y += 45) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
           ctx.stroke();
         }
 
-        // Scanning telemetry nodes
-        const scanX = ((phase * 65) % (w - 80)) + 40;
-        ctx.fillStyle = isPrism ? '#F472B6' : '#38BDF8';
-        ctx.beginPath();
-        ctx.arc(scanX, h * 0.45 + Math.sin(phase * 2) * 24, 6, 0, Math.PI * 2);
-        ctx.fill();
+        if (isFunnyArcade) {
+          // Playful bouncing 3D spheres & confetti rings for funny video showcase
+          const colors = ['#F43F5E', '#FBBF24', '#34D399', '#38BDF8', '#A855F7'];
+          for (let i = 0; i < 5; i++) {
+            const bx = w * (0.18 + i * 0.16) + Math.sin(phase * 1.4 + i) * 26;
+            const bounce = Math.abs(Math.sin(phase * 2.2 + i * 0.75));
+            const by = h * 0.68 - bounce * (h * 0.36);
+            const radius = 24 + (i % 3) * 6;
+
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.beginPath();
+            ctx.arc(bx, by, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Playful eyes on bouncing spheres
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(bx - 7, by - 4, 4.5, 0, Math.PI * 2);
+            ctx.arc(bx + 7, by - 4, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#0F172A';
+            ctx.beginPath();
+            ctx.arc(bx - 6, by - 4, 2, 0, Math.PI * 2);
+            ctx.arc(bx + 8, by - 4, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else {
+          // Animated wave / telemetry curves
+          for (let layer = 0; layer < 3; layer++) {
+            ctx.beginPath();
+            const colors = isPrism
+              ? ['#F472B6', '#818CF8', '#38BDF8']
+              : ['#38BDF8', '#60A5FA', '#F59E0B'];
+            ctx.strokeStyle = colors[layer];
+            ctx.lineWidth = 3 - layer * 0.6;
+            for (let x = 0; x <= w; x += 12) {
+              const y =
+                h * 0.52 +
+                Math.sin(x * 0.014 + phase * (1.2 + layer * 0.35) + layer) *
+                  (28 + layer * 14) +
+                Math.cos(x * 0.008 - phase * 0.8) * 14;
+              if (x === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          }
+
+          // Scanning telemetry nodes
+          const scanX = ((phase * 65) % (w - 80)) + 40;
+          ctx.fillStyle = isPrism ? '#F472B6' : '#38BDF8';
+          ctx.beginPath();
+          ctx.arc(scanX, h * 0.45 + Math.sin(phase * 2) * 24, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
       // Timecode HUD inside video frame
-      ctx.fillStyle = 'rgba(248, 250, 252, 0.82)';
+      ctx.fillStyle = isMarbleTemple
+        ? 'rgba(28, 25, 23, 0.82)'
+        : 'rgba(248, 250, 252, 0.86)';
       ctx.font = '600 12px "JetBrains Mono", monospace';
       const sec = Math.floor(phase % 60);
       const frames = Math.floor((phase * 24) % 24);
       ctx.fillText(
         `REC · TC 01:14:${String(sec).padStart(2, '0')}:${String(frames).padStart(2, '0')} · ${
-          isFunnyArcade ? 'VISITOR FUNNY REEL' : '4K DCI'
+          isTempleSanctum
+            ? 'SACRED SANCTUM 60FPS FX'
+            : isFunnyArcade
+              ? 'VISITOR FUNNY REEL'
+              : '4K DCI'
         }`,
         18,
         26

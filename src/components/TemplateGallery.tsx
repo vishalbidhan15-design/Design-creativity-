@@ -13,9 +13,10 @@ import {
   getWcagComplianceLevel,
   HeadlineAnimationStyle,
 } from '../utils/deckEngine';
+import { TEMPLE_STYLE_PRESETS } from '../utils/templeEngine';
 import { SlideCanvas } from './SlideCanvas';
 import { AnimatedHeadline } from './AnimatedHeadline';
-import { Search, SlidersHorizontal, ArrowUpRight, Eye, Film } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpRight, Eye, Film, Sparkles } from 'lucide-react';
 
 interface TemplateGalleryProps {
   templates: TemplateDeck[];
@@ -32,6 +33,7 @@ interface TemplateGalleryProps {
 
 const CATEGORIES: TemplateCategory[] = [
   'All Templates',
+  'Sacred & Temple Architecture',
   'Pitch & Venture',
   'Financial & Board',
   'Product & Roadmap',
@@ -77,19 +79,19 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         {/* Section Header */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <p className="text-xs font-medium text-slate-500">
-              02. Curated Presentation Architecture
+            <p className="text-xs font-medium text-amber-800 font-mono uppercase tracking-wider">
+              02. Sacred Temple Sanctuary & Executive Presentation Architecture
             </p>
             <AnimatedHeadline
               as="h2"
-              text="Domain-Engineered Slide Systems Ready for Executive Customization"
+              text="Sacred Temple Monograph & Executive Slide Systems with HD Procedural Textures"
               animationStyle={headlineAnimation}
               primaryColorHex="#0F172A"
-              accentColorHex="#2563EB"
+              accentColorHex="#D97706"
               className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-display"
             />
             <p className="text-sm text-slate-600 leading-relaxed">
-              Every template is built on a 12-column mathematical grid with 3D spatial depth, pre-audited WCAG AA/AAA contrast pairings, tabular financial matrices, and modular slide masters.
+              Explore Dravidian Granite Gopurams, Nagara Sandstone Sanctums, Himalayan Cedar Pagodas, and Makrana White Marble Mandapas alongside executive venture and board decks—complete with 60fps golden god rays, incense mist, and interactive 3D card tilt.
             </p>
           </div>
 
@@ -99,10 +101,10 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               <input
                 type="search"
                 aria-label="Search templates by keyword or domain"
-                placeholder="Search decks, metrics, or layouts..."
+                placeholder="Search temple styles, stone, marble..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 text-xs bg-white border border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-700 w-64"
+                className="pl-9 pr-4 py-2 text-xs bg-white border border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-600 w-64"
               />
             </div>
 
@@ -116,7 +118,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                 aria-label="Filter by aspect ratio"
                 value={selectedRatio}
                 onChange={(e) => setSelectedRatio(e.target.value as AspectRatioFormat | 'ALL')}
-                className="px-3 py-2 text-xs bg-white border border-slate-300 rounded-md text-slate-800 font-medium focus:outline-none focus:border-blue-700"
+                className="px-3 py-2 text-xs bg-white border border-slate-300 rounded-md text-slate-800 font-medium focus:outline-none focus:border-amber-600"
               >
                 <option value="ALL">All Aspect Ratios</option>
                 <option value="16:9">16:9 Widescreen</option>
@@ -144,8 +146,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                   onClick={() => setSelectedCategory(category)}
                   className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
                     isActive
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-slate-900 text-white shadow-xs font-semibold'
+                      : 'text-slate-700 hover:text-slate-900'
                   }`}
                 >
                   {category}
@@ -193,10 +195,14 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               const wcag = getWcagComplianceLevel(contrast);
               const isLoadedInStudio = tpl.id === activeTemplateId;
               const cardTilt = hoveredCardTilt[tpl.id];
+              const templeStylePreset = tpl.templeTextureId
+                ? TEMPLE_STYLE_PRESETS.find((p) => p.id === tpl.templeTextureId)
+                : undefined;
 
               return (
                 <article
                   key={tpl.id}
+                  data-testid={`template-card-${tpl.id}`}
                   onMouseMove={(e) => {
                     if (!enable3DDesignMotion) return;
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -205,7 +211,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                     const normY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
                     setHoveredCardTilt((prev) => ({
                       ...prev,
-                      [tpl.id]: computeCard3DTiltTransform(normX, normY, 4, 6),
+                      [tpl.id]: computeCard3DTiltTransform(normX, normY, 6, 12),
                     }));
                   }}
                   onMouseLeave={() => {
@@ -215,14 +221,24 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       return next;
                     });
                   }}
-                  className="bg-white/95 border border-slate-200 flex flex-col justify-between p-6 space-y-5 transition-transform duration-150 hover:border-slate-300 preserve-3d"
+                  className={`bg-white/95 border flex flex-col justify-between p-6 space-y-5 transition-all duration-150 preserve-3d ${
+                    templeStylePreset
+                      ? 'border-amber-500/40 hover:border-amber-500 hover:shadow-xl'
+                      : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
+                  }`}
                   style={cardTilt ? { transform: cardTilt } : undefined}
                 >
                   <div className="space-y-4">
                     {/* Unboxed Clean Typographic Metadata Header */}
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-800">{tpl.category}</span>
+                        <span
+                          className={`font-semibold ${
+                            templeStylePreset ? 'text-amber-800' : 'text-slate-800'
+                          }`}
+                        >
+                          {tpl.category}
+                        </span>
                         <span aria-hidden="true">·</span>
                         <span className="font-mono tabular-nums">
                           {tpl.slides.length === 1
@@ -236,6 +252,19 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                         Contrast {contrast}:1 ({wcag})
                       </div>
                     </div>
+
+                    {/* Sacred Temple Material & Ambient FX Subtitle */}
+                    {templeStylePreset && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-amber-900 bg-amber-50/90 border border-amber-200/80 px-2.5 py-1.5 rounded">
+                        <span className="inline-flex items-center gap-1.5 font-semibold">
+                          <Sparkles className="w-3 h-3 text-amber-600" aria-hidden="true" />
+                          HD Texture: {templeStylePreset.materialLabel}
+                        </span>
+                        <span className="text-amber-700">
+                          God Rays · Incense Mist · Diya Glow
+                        </span>
+                      </div>
+                    )}
 
                     {/* Title & Summary */}
                     <div className="space-y-1.5">

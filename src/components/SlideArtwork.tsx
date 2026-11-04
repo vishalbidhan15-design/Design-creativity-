@@ -45,6 +45,327 @@ export const SlideArtwork: React.FC<SlideArtworkProps> = ({
     ...(tiltTransform ? { transform: tiltTransform } : {}),
   };
 
+  if (artworkId === 'dravidian-gopuram') {
+    return (
+      <div
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={wrapperClass}
+        style={wrapperStyle}
+      >
+        <div
+          className="flex items-center justify-between gap-2 text-[10px] font-mono tracking-tight whitespace-nowrap"
+          style={{ color: textMuted }}
+        >
+          <span className="truncate">DRAVIDIAN GOPURAM · 11-TIER</span>
+          <span className="shrink-0" style={{ color: accent }}>
+            24K KALASH FINIAL
+          </span>
+        </div>
+        <svg
+          viewBox="0 0 400 210"
+          className="w-full h-auto my-auto max-h-[135px]"
+          role="img"
+          aria-label="Dravidian granite temple gopuram and carved mandapa pillars"
+        >
+          {/* Golden Kalash Finials at Crown */}
+          {[150, 175, 200, 225, 250].map((cx) => (
+            <g key={cx}>
+              <polygon
+                points={`${cx},12 ${cx - 5},24 ${cx + 5},24`}
+                fill={accent}
+              />
+              <circle cx={cx} cy={11} r="2.5" fill="#FEF08A" />
+            </g>
+          ))}
+          {/* Stepped Gopuram Pyramid Tiers */}
+          {[
+            { y: 24, w: 124 },
+            { y: 42, w: 148 },
+            { y: 60, w: 174 },
+            { y: 78, w: 202 },
+            { y: 96, w: 232 },
+          ].map((tier, idx) => (
+            <g key={tier.y}>
+              <rect
+                x={200 - tier.w / 2}
+                y={tier.y}
+                width={tier.w}
+                height="15"
+                fill={idx % 2 === 0 ? textPrimary : surface}
+                fillOpacity={idx % 2 === 0 ? 0.85 : 1}
+                stroke={accent}
+                strokeWidth="1.2"
+              />
+            </g>
+          ))}
+          {/* Carved Granite Mandapa Pillars */}
+          {[44, 84, 124, 276, 316, 356].map((px) => (
+            <g key={px}>
+              <rect
+                x={px - 7}
+                y="114"
+                width="14"
+                height="66"
+                fill={textPrimary}
+                fillOpacity="0.82"
+                stroke={accent}
+                strokeWidth="1"
+              />
+              <rect
+                x={px - 10}
+                y="112"
+                width="20"
+                height="5"
+                fill={accent}
+              />
+            </g>
+          ))}
+          {/* Central Garbhagriha Sanctum Portal */}
+          <rect
+            x="166"
+            y="114"
+            width="68"
+            height="66"
+            fill={accent}
+            fillOpacity="0.16"
+            stroke={accent}
+            strokeWidth="2"
+          />
+          <circle cx="200" cy="148" r="12" fill={accent} fillOpacity="0.45" />
+          {/* Temple Adhisthana Plinth */}
+          <rect x="24" y="180" width="352" height="10" fill={textPrimary} />
+          <line x1="20" y1="194" x2="380" y2="194" stroke={accent} strokeWidth="1.5" />
+        </svg>
+        <div
+          className="flex items-center justify-between gap-2 text-[10px] font-mono pt-1.5 border-t whitespace-nowrap"
+          style={{ borderColor: border, color: textMuted }}
+        >
+          <span>CHISELED CHARNOCKITE</span>
+          <span>1000-PILLAR MANDAPA</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (artworkId === 'nagara-shikhara') {
+    return (
+      <div
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={wrapperClass}
+        style={wrapperStyle}
+      >
+        <div
+          className="flex items-center justify-between gap-2 text-[10px] font-mono tracking-tight whitespace-nowrap"
+          style={{ color: textMuted }}
+        >
+          <span className="truncate">NAGARA SHIKHARA & JAALI</span>
+          <span className="shrink-0" style={{ color: accent }}>
+            DHOLPUR SANDSTONE
+          </span>
+        </div>
+        <svg
+          viewBox="0 0 400 210"
+          className="w-full h-auto my-auto max-h-[135px]"
+          role="img"
+          aria-label="Nagara sandstone temple shikhara and intricate jaali lattice"
+        >
+          {/* Amalaka & Kalash Crown */}
+          <ellipse cx="200" cy="22" rx="18" ry="5" fill={accent} />
+          <polygon points="200,9 194,20 206,20" fill="#FDE68A" />
+          {/* Curvilinear Rekha-Prasada Shikhara Spire */}
+          <path
+            d="M 140 176 Q 156 68, 184 26 L 216 26 Q 244 68, 260 176 Z"
+            fill={accent}
+            fillOpacity="0.18"
+            stroke={accent}
+            strokeWidth="2"
+          />
+          {/* Subsidiary Urushringa Spires */}
+          <path
+            d="M 105 176 Q 116 105, 136 74 L 154 74 Q 164 115, 168 176 Z"
+            fill={surface}
+            stroke={textPrimary}
+            strokeWidth="1.4"
+          />
+          <path
+            d="M 232 176 Q 236 115, 246 74 L 264 74 Q 284 105, 295 176 Z"
+            fill={surface}
+            stroke={textPrimary}
+            strokeWidth="1.4"
+          />
+          {/* Perforated Geometric Jaali Screens */}
+          {[46, 314].map((jx) => (
+            <g key={jx}>
+              <rect
+                x={jx}
+                y="96"
+                width="40"
+                height="80"
+                fill="none"
+                stroke={accent}
+                strokeWidth="1.4"
+              />
+              <polygon
+                points={`${jx + 20},104 ${jx + 36},136 ${jx + 20},168 ${jx + 4},136`}
+                fill="none"
+                stroke={textPrimary}
+                strokeWidth="1"
+              />
+            </g>
+          ))}
+          <rect x="28" y="176" width="344" height="10" fill={textPrimary} />
+        </svg>
+        <div
+          className="flex items-center justify-between gap-2 text-[10px] font-mono pt-1.5 border-t whitespace-nowrap"
+          style={{ borderColor: border, color: textMuted }}
+        >
+          <span>URUSHRINGA FRACTAL</span>
+          <span>GEOMETRIC JAALI</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (artworkId === 'himalayan-pagoda') {
+    return (
+      <div
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={wrapperClass}
+        style={wrapperStyle}
+      >
+        <div
+          className="flex items-center justify-between gap-2 text-[10px] font-mono tracking-tight whitespace-nowrap"
+          style={{ color: textMuted }}
+        >
+          <span className="truncate">HIMALAYAN KATH-KUNI PAGODA</span>
+          <span className="shrink-0" style={{ color: accent }}>
+            CEDAR & BRASS BELLS
+          </span>
+        </div>
+        <svg
+          viewBox="0 0 400 210"
+          className="w-full h-auto my-auto max-h-[135px]"
+          role="img"
+          aria-label="Himalayan wooden pagoda with slate roofs and hanging brass bells"
+        >
+          {/* Brass Canopy Finial */}
+          <polygon points="200,10 186,28 214,28" fill={accent} />
+          {/* 3 Cantilevered Slate & Cedar Pagoda Roofs */}
+          {[
+            { y: 28, topW: 72, botW: 164 },
+            { y: 66, topW: 112, botW: 224 },
+            { y: 106, topW: 156, botW: 288 },
+          ].map((roof) => (
+            <g key={roof.y}>
+              <polygon
+                points={`${200 - roof.topW / 2},${roof.y} ${200 + roof.topW / 2},${roof.y} ${200 + roof.botW / 2},${roof.y + 24} ${200 - roof.botW / 2},${roof.y + 24}`}
+                fill={textPrimary}
+                fillOpacity="0.86"
+                stroke={accent}
+                strokeWidth="1.5"
+              />
+              {/* Hanging Brass Eave Bells (Ghantas) */}
+              {[200 - roof.botW / 2 + 12, 200 + roof.botW / 2 - 12].map((bx) => (
+                <circle key={bx} cx={bx} cy={roof.y + 29} r="3.5" fill={accent} />
+              ))}
+            </g>
+          ))}
+          {/* Interlocking Deodar Cedar Timber Sanctum Base */}
+          <rect
+            x="116"
+            y="130"
+            width="168"
+            height="48"
+            fill={accent}
+            fillOpacity="0.14"
+            stroke={accent}
+            strokeWidth="1.6"
+          />
+          <rect x="44" y="178" width="312" height="10" fill={textPrimary} />
+        </svg>
+        <div
+          className="flex items-center justify-between gap-2 text-[10px] font-mono pt-1.5 border-t whitespace-nowrap"
+          style={{ borderColor: border, color: textMuted }}
+        >
+          <span>DEODAR CEDAR TIMBER</span>
+          <span>SEISMIC KATH-KUNI</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (artworkId === 'makrana-mandapa') {
+    return (
+      <div
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={wrapperClass}
+        style={wrapperStyle}
+      >
+        <div
+          className="flex items-center justify-between gap-2 text-[10px] font-mono tracking-tight whitespace-nowrap"
+          style={{ color: textMuted }}
+        >
+          <span className="truncate">MAKRANA MARBLE MANDAPA</span>
+          <span className="shrink-0" style={{ color: accent }}>
+            24K GOLD INLAY
+          </span>
+        </div>
+        <svg
+          viewBox="0 0 400 210"
+          className="w-full h-auto my-auto max-h-[135px]"
+          role="img"
+          aria-label="White Makrana marble sanctum with cuspate torana arches and golden inlay"
+        >
+          {/* Lotus Dome & Golden Inlay Medallion */}
+          <path
+            d="M 116 74 Q 200 10, 284 74 Z"
+            fill={accent}
+            fillOpacity="0.15"
+            stroke={accent}
+            strokeWidth="2"
+          />
+          <circle cx="200" cy="48" r="14" fill="none" stroke={accent} strokeWidth="1.6" />
+          {/* Cuspate Marble Torana Arches */}
+          <path
+            d="M 68 92 Q 100 68, 132 92 Q 166 66, 200 92 Q 234 66, 268 92 Q 300 68, 332 92"
+            fill="none"
+            stroke={accent}
+            strokeWidth="2.2"
+          />
+          {/* Fluted White Marble Pillars with Golden Base/Capital */}
+          {[68, 132, 200, 268, 332].map((px) => (
+            <g key={px}>
+              <rect
+                x={px - 6}
+                y="74"
+                width="12"
+                height="102"
+                fill={surface}
+                stroke={textPrimary}
+                strokeWidth="1.4"
+              />
+              <rect x={px - 9} y="72" width="18" height="5" fill={accent} />
+              <rect x={px - 9} y="172" width="18" height="5" fill={accent} />
+            </g>
+          ))}
+          <rect x="36" y="177" width="328" height="9" fill={textPrimary} />
+          <line x1="36" y1="191" x2="364" y2="191" stroke={accent} strokeWidth="1.5" />
+        </svg>
+        <div
+          className="flex items-center justify-between gap-2 text-[10px] font-mono pt-1.5 border-t whitespace-nowrap"
+          style={{ borderColor: border, color: textMuted }}
+        >
+          <span>98% CALCITE MARBLE</span>
+          <span>PARCHIN KARI INLAY</span>
+        </div>
+      </div>
+    );
+  }
+
   if (artworkId === 'arch-pavilion') {
     return (
       <div

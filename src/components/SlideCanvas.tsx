@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   AspectRatioFormat,
   SlideData,
+  TempleTextureId,
   ThemePalette,
   TypographyPair,
 } from '../types/presentation';
@@ -11,9 +12,14 @@ import {
   HeadlineAnimationStyle,
   SAMPLE_MEDIA_ASSETS,
 } from '../utils/deckEngine';
+import {
+  DEFAULT_TEMPLE_FX_CONFIG,
+  TempleAmbientFxConfig,
+} from '../utils/templeEngine';
 import { SlideArtwork } from './SlideArtwork';
 import { SlideMediaFrame } from './SlideMediaFrame';
 import { AnimatedHeadline } from './AnimatedHeadline';
+import { TempleAmbientFxOverlay } from './TempleAmbientFxOverlay';
 
 interface SlideCanvasProps {
   slide: SlideData;
@@ -28,6 +34,8 @@ interface SlideCanvasProps {
   compact?: boolean;
   headlineAnimation?: HeadlineAnimationStyle;
   enable3DDesignMotion?: boolean;
+  templeTextureId?: TempleTextureId;
+  templeFxConfig?: TempleAmbientFxConfig;
   onUpdateSlideField?: <K extends keyof SlideData>(field: K, value: SlideData[K]) => void;
 }
 
@@ -44,9 +52,24 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   compact = false,
   headlineAnimation = 'kinetic-3d-wave',
   enable3DDesignMotion = true,
+  templeTextureId,
+  templeFxConfig = DEFAULT_TEMPLE_FX_CONFIG,
   onUpdateSlideField,
 }) => {
   const [pointerTiltCss, setPointerTiltCss] = useState<string | null>(null);
+
+  const inferredTempleTexture: TempleTextureId | undefined =
+    templeTextureId ||
+    slide.templeTextureId ||
+    (slide.artworkId === 'dravidian-gopuram'
+      ? 'dravidian-granite'
+      : slide.artworkId === 'nagara-shikhara'
+        ? 'nagara-sandstone'
+        : slide.artworkId === 'himalayan-pagoda'
+          ? 'himalayan-cedar'
+          : slide.artworkId === 'makrana-mandapa'
+            ? 'makrana-marble'
+            : undefined);
 
   const aspectClass =
     aspectRatio === '16:9'
@@ -89,6 +112,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   return (
     <div
       data-testid="active-slide-canvas"
+      data-slide-id={slide.id}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={`relative w-full ${aspectClass} border transition-transform duration-150 overflow-hidden flex flex-col justify-between ${containerPadding} select-none ${
@@ -102,6 +126,15 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
         ...(pointerTiltCss ? { transform: pointerTiltCss } : {}),
       }}
     >
+      {/* Realistic HD Procedural Temple Texture, Soft Golden God Rays, Rising Incense Smoke Mist & Flickering Diya Glows */}
+      {(inferredTempleTexture || templeFxConfig.godRays || templeFxConfig.incenseSmoke || templeFxConfig.diyaLamps) && (
+        <TempleAmbientFxOverlay
+          textureId={inferredTempleTexture}
+          fxConfig={templeFxConfig}
+          compact={compact}
+        />
+      )}
+
       {/* Optional Swiss 12-Column & 5% Safe-Margin Architectural Grid Overlay */}
       {showGridGuides && (
         <div

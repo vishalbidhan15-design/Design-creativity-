@@ -13,12 +13,23 @@ export type VisualArtworkId =
   | 'editorial-workspace'
   | 'sustainable-grid'
   | 'swiss-typography'
-  | 'venture-topology';
+  | 'venture-topology'
+  | 'dravidian-gopuram'
+  | 'nagara-shikhara'
+  | 'himalayan-pagoda'
+  | 'makrana-mandapa';
+
+export type TempleTextureId =
+  | 'dravidian-granite'
+  | 'nagara-sandstone'
+  | 'himalayan-cedar'
+  | 'makrana-marble';
 
 export type AspectRatioFormat = '16:9' | '4:3' | 'A4';
 
 export type TemplateCategory =
   | 'All Templates'
+  | 'Sacred & Temple Architecture'
   | 'Pitch & Venture'
   | 'Financial & Board'
   | 'Product & Roadmap'
@@ -91,6 +102,7 @@ export interface SlideData {
   footnote: string;
   speakerNotes: string;
   artworkId: VisualArtworkId;
+  templeTextureId?: TempleTextureId;
   customMedia?: SlideMediaConfig;
   kpis: SlideKpiItem[];
   waterfallBars: WaterfallBarItem[];
@@ -129,6 +141,7 @@ export interface TemplateDeck {
   aspectRatio: AspectRatioFormat;
   defaultThemeId: string;
   defaultTypographyId: string;
+  templeTextureId?: TempleTextureId;
   authorTeam: string;
   lastUpdated: string;
   slides: SlideData[];
